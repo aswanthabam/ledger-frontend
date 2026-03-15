@@ -2,6 +2,10 @@
   "expo": {
     "name": "ledger-frontend",
     "slug": "ledger-frontend",
+    "scheme": [
+      "com.ledger.app",
+      "com.googleusercontent.apps.718189168936-vlpef9ft1m9s5g6qijt7ujl17ag8s7gd"
+    ],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,6 +19,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.ledger.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,6 +30,13 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "./plugins/withWidgets.js",
+      "expo-web-browser"
+    ]
   }
 }
