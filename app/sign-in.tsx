@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from '../lib/secure-store';
 import * as WebBrowser from 'expo-web-browser';
@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { AntDesign } from '@expo/vector-icons';
 import { verifyGoogleToken } from '../lib/api';
 import { useAppStore } from '../stores/useAppStore';
+import { runSync } from '../lib/sync';
 
 // Ensure WebBrowser completes its authentication session
 WebBrowser.maybeCompleteAuthSession();
@@ -32,7 +33,9 @@ export default function SignInScreen() {
     });
 
     useEffect(() => {
+        console.log("response receive:", response)
         if (response?.type === 'success') {
+
             const { authentication } = response;
             if (authentication?.idToken) {
                 handleBackendVerification(authentication.idToken);
@@ -52,22 +55,50 @@ export default function SignInScreen() {
         try {
             const deviceInfo = `${Platform.OS} - ${Platform.Version}`;
             const data = await verifyGoogleToken(googleToken, deviceInfo);
-
+            console.log("token verify data", data);
             // Store JWT
             await SecureStore.setItemAsync('authToken', data.token);
 
             // Store user info
             if (data.user) {
-                setUser({
-                    name: data.user.name || data.user.email?.split('@')[0] || 'User',
-                    email: data.user.email || '',
-                    avatar: data.user.avatar || undefined,
-                });
-                await SecureStore.setItemAsync('userName', data.user.name || '');
-                await SecureStore.setItemAsync('userEmail', data.user.email || '');
-            }
+                const userName = data.user.name || data.user.email?.split('@')[0] || 'User';
+                const userEmail = data.user.email || '';
+                const profilePicture = data.user.profilePicture || undefined;
 
-            router.replace('/(app)');
+                setUser({
+                    name: userName,
+                    email: userEmail,
+                    profilePicture: profilePicture,
+                });
+                await SecureStore.setItemAsync('userName', userName);
+                await SecureStore.setItemAsync('userEmail', userEmail);
+                if (profilePicture) {
+                    await SecureStore.setItemAsync('userProfilePicture', profilePicture);
+                }
+
+                try {
+                    await runSync();
+                } catch (syncError: any) {
+                    if (syncError.message === 'UNAUTHORIZED') {
+                        // Token expired
+                        await SecureStore.deleteItemAsync('authToken');
+                        router.replace('/sign-in');
+                        return;
+                    }
+                    // Non-auth sync errors are ok — we continue with local data
+                    console.warn('Sync on boot failed:', syncError.message);
+                }
+
+                // Check for categories
+                const categories = useAppStore.getState().categories;
+                if (categories.length === 0) {
+                    console.log("No categories found, redirecting to onboarding");
+                    router.replace('/onboarding');
+                } else {
+                    console.log("Categories found, redirecting to app dashboard");
+                    router.replace('/(app)');
+                }
+            }
         } catch (e: any) {
             console.error("Verification failed", e);
             setError(e.message || 'Failed to verify with server. Please try again.');
@@ -79,8 +110,12 @@ export default function SignInScreen() {
         <View className="flex-1 items-center justify-center bg-white px-6 dark:bg-gray-950">
 
             {/* Icon Logo */}
-            <View className="mb-4 h-24 w-24 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                <Text className="text-4xl font-black text-green-600 dark:text-green-500">L</Text>
+            <View className="mb-4 h-24 w-24 items-center justify-center overflow-hidden rounded-3xl bg-white shadow-sm dark:bg-gray-900">
+                <Image
+                    source={require('../assets/icon.png')}
+                    className="h-full w-full"
+                    resizeMode="contain"
+                />
             </View>
             <Text className="mb-2 text-4xl font-bold text-gray-900 dark:text-gray-100">Ledger</Text>
 

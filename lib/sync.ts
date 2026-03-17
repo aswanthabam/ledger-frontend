@@ -1,7 +1,8 @@
 import { getDB } from './db';
-import { apiGet, apiPost } from './api';
+import { apiGet, apiPost, apiPatch } from './api';
 import { useAppStore } from '../stores/useAppStore';
 import * as SecureStore from './secure-store';
+import { getCurrencySymbol } from './currencies';
 
 // ─── Pull: Server → Local DB ───────────────────────────────────────
 export async function syncPull() {
@@ -93,7 +94,8 @@ export async function syncPush() {
     const unsyncedTransactions = await db.getAllAsync<any>(
         `SELECT * FROM transactions WHERE isSynced = 0`
     );
-
+    console.log("Push Categories:", unsyncedCategories);
+    console.log("Push Transactions:", unsyncedTransactions);
     if (unsyncedCategories.length === 0 && unsyncedTransactions.length === 0) return;
 
     try {
@@ -149,13 +151,15 @@ export async function syncPush() {
     }
 }
 
-// ─── Full Sync: Pull then Push ──────────────────────────────────────
+// ─── Full Sync: Pull then Push then Preferences ────────────────────
 export async function runSync() {
+    console.log("running sync")
     const store = useAppStore.getState();
     store.setSyncing(true);
     try {
         await syncPull();
         await syncPush();
+        await syncPreferences();
         // Refresh in-memory state from DB
         await loadDataIntoStore();
     } catch (e: any) {
@@ -180,6 +184,64 @@ export async function loadDataIntoStore() {
     console.log("Transactions:", transactions);
     store.setCategories(categories as any[]);
     store.setTransactions(transactions as any[]);
+
+    // Hydrate currency from SecureStore
+    await loadPreferencesIntoStore();
+}
+
+// ─── Load preferences from SecureStore into Zustand ─────────────────
+export async function loadPreferencesIntoStore() {
+    const store = useAppStore.getState();
+    const savedCurrency = await SecureStore.getItemAsync('currency');
+    const savedChangedAt = await SecureStore.getItemAsync('currencyChangedAt');
+    if (savedCurrency) {
+        store.setCurrency(savedCurrency, savedChangedAt || null);
+    }
+}
+
+// ─── Sync Preferences: Last-write-wins ──────────────────────────────
+export async function syncPreferences() {
+    try {
+        const localCurrency = await SecureStore.getItemAsync('currency');
+        const localChangedAt = await SecureStore.getItemAsync('currencyChangedAt');
+
+        // Fetch remote preferences
+        const response = await apiGet('/api/users/me');
+        const remoteCurrency = response.data?.preferences?.currency || 'INR';
+        const remoteUpdatedAt = response.data?.updatedAt;
+
+        // If no local preference set, adopt remote
+        if (!localCurrency) {
+            await SecureStore.setItemAsync('currency', remoteCurrency);
+            if (remoteUpdatedAt) {
+                await SecureStore.setItemAsync('currencyChangedAt', remoteUpdatedAt);
+            }
+            return;
+        }
+
+        // Already in sync
+        if (localCurrency === remoteCurrency) return;
+
+        // Compare timestamps for last-write-wins
+        const localTime = localChangedAt ? new Date(localChangedAt).getTime() : 0;
+        const remoteTime = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
+
+        if (localTime > remoteTime) {
+            // Local is newer → push to server
+            await apiPatch('/api/users/me/preferences', {
+                preferences: { currency: localCurrency },
+            });
+        } else {
+            // Remote is newer → update local
+            await SecureStore.setItemAsync('currency', remoteCurrency);
+            if (remoteUpdatedAt) {
+                await SecureStore.setItemAsync('currencyChangedAt', remoteUpdatedAt);
+            }
+        }
+    } catch (e: any) {
+        if (e.message === 'UNAUTHORIZED') throw e;
+        console.warn('Preference sync failed (offline?):', e.message);
+    }
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────

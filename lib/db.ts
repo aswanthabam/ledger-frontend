@@ -78,11 +78,48 @@ export async function insertCategory(cat: {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`, params);
 }
 
+export async function bulkInsertCategories(categories: {
+    uuid: string; name: string; type: string; icon: string; iconType: string;
+    themeBgLight: string; themeBgDark: string; themeFgLight: string; themeFgDark: string;
+}[]) {
+    const db = await getDB();
+    await db.withTransactionAsync(async () => {
+        for (const cat of categories) {
+            const params = [
+                cat.uuid, cat.name, cat.type, cat.icon, cat.iconType,
+                cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark
+            ].map(val => val === undefined ? null : val);
+            await db.runAsync(`INSERT INTO categories (uuid, name, type, icon, iconType, themeBgLight, themeBgDark, themeFgLight, themeFgDark, isSynced)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`, params);
+        }
+    });
+}
+
 export async function softDeleteCategory(uuid: string) {
     const db = await getDB();
     await db.runAsync(
         `UPDATE categories SET isDeleted = 1, isSynced = 0 WHERE uuid = ?`,
         [uuid]
+    );
+}
+
+export async function updateCategory(cat: {
+    uuid: string; name: string; type: string; icon: string; iconType: string;
+    themeBgLight: string; themeBgDark: string; themeFgLight: string; themeFgDark: string;
+}) {
+    const db = await getDB();
+    const params = [
+        cat.name, cat.type, cat.icon, cat.iconType,
+        cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark,
+        cat.uuid
+    ].map(val => val === undefined ? null : val);
+    await db.runAsync(
+        `UPDATE categories 
+         SET name = ?, type = ?, icon = ?, iconType = ?, 
+             themeBgLight = ?, themeBgDark = ?, themeFgLight = ?, themeFgDark = ?,
+             isSynced = 0 
+         WHERE uuid = ?`,
+        params
     );
 }
 
@@ -121,10 +158,41 @@ export async function insertTransaction(txn: {
     );
 }
 
+export async function updateTransaction(txn: {
+    uuid: string; categoryUuid: string; type: string; amount: number;
+    transactionDate: string; note: string;
+}) {
+    const db = await getDB();
+    await db.runAsync(
+        `UPDATE transactions 
+         SET categoryUuid = ?, type = ?, amount = ?, transactionDate = ?, note = ?, isSynced = 0 
+         WHERE uuid = ?`,
+        [txn.categoryUuid, txn.type, txn.amount, txn.transactionDate, txn.note, txn.uuid]
+    );
+}
+
 export async function softDeleteTransaction(uuid: string) {
     const db = await getDB();
     await db.runAsync(
         `UPDATE transactions SET isDeleted = 1, isSynced = 0 WHERE uuid = ?`,
         [uuid]
     );
+}
+
+// ─── Sync & Reset Helpers ───────────────────────────────────────────
+
+export async function hasUnsyncedData(): Promise<boolean> {
+    const db = await getDB();
+    const categories = await db.getAllAsync('SELECT uuid FROM categories WHERE isSynced = 0');
+    const transactions = await db.getAllAsync('SELECT uuid FROM transactions WHERE isSynced = 0');
+    return categories.length > 0 || transactions.length > 0;
+}
+
+export async function resetDB() {
+    const db = await getDB();
+    await db.execAsync(`
+        DELETE FROM transactions;
+        DELETE FROM categories;
+    `);
+    console.log("Database reset");
 }

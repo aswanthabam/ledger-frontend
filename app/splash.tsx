@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from '../lib/secure-store';
 import { runSync } from '../lib/sync';
@@ -23,8 +23,13 @@ export default function SplashScreen() {
                 // Restore user info from local storage
                 const userName = await SecureStore.getItemAsync('userName');
                 const userEmail = await SecureStore.getItemAsync('userEmail');
+                const userProfilePicture = await SecureStore.getItemAsync('userProfilePicture');
                 if (userName || userEmail) {
-                    setUser({ name: userName || 'User', email: userEmail || '' });
+                    setUser({
+                        name: userName || 'User',
+                        email: userEmail || '',
+                        profilePicture: userProfilePicture || undefined
+                    });
                 }
 
                 // Run sync to pull latest data from server
@@ -42,7 +47,13 @@ export default function SplashScreen() {
                     console.warn('Sync on boot failed:', syncError.message);
                 }
 
-                router.replace('/(app)');
+                // Check for categories
+                const categories = useAppStore.getState().categories;
+                if (categories.length === 0) {
+                    router.replace('/onboarding');
+                } else {
+                    router.replace('/(app)');
+                }
             } catch (e) {
                 console.error('Boot error:', e);
                 router.replace('/sign-in');
@@ -54,8 +65,12 @@ export default function SplashScreen() {
 
     return (
         <View className="flex-1 items-center justify-center bg-white dark:bg-gray-950">
-            <View className="mb-6 h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                <Text className="text-3xl font-black text-green-600 dark:text-green-500">L</Text>
+            <View className="mb-6 h-24 w-24 items-center justify-center overflow-hidden rounded-3xl bg-white shadow-sm dark:bg-gray-900">
+                <Image
+                    source={require('../assets/icon.png')}
+                    className="h-full w-full"
+                    resizeMode="contain"
+                />
             </View>
             <Text className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">Ledger</Text>
             <ActivityIndicator size="small" color="#10B981" />

@@ -27,8 +27,8 @@ export default function IconPickerScreen() {
     const renderIcon = (icon: string) => (
         <TouchableOpacity
             key={icon}
-            className="items-center justify-center rounded-2xl bg-gray-50 dark:bg-gray-900/50"
-            style={{ width: '22%', aspectRatio: 1, margin: '1.5%' }}
+            className="flex flex-col items-center justify-center rounded-2xl bg-gray-50 dark:bg-gray-900/50"
+            style={{ width: '22%', aspectRatio: 1.3, margin: '1.5%' }}
             onPress={() => handleSelect(icon)}
         >
             <MaterialCommunityIcons
@@ -55,7 +55,7 @@ export default function IconPickerScreen() {
             </View>
 
             {/* Search Bar */}
-            <View className="mx-6 mt-4 flex-row items-center rounded-full bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
+            <View className="mx-6 mt-4 flex-row items-center rounded-full bg-gray-50 px-4 dark:bg-gray-900/50">
                 <MaterialCommunityIcons name="magnify" size={18} color="#9CA3AF" />
                 <TextInput
                     className="ml-3 flex-1 text-base text-gray-900 dark:text-gray-100"
@@ -100,7 +100,7 @@ export default function IconPickerScreen() {
                         </Text>
                     )}
                     renderItem={({ item: icons }) => (
-                        <View className="flex-row flex-wrap">
+                        <View className="flex-row flex-wrap items-start">
                             {icons.map((icon: string) => renderIcon(icon))}
                         </View>
                     )}

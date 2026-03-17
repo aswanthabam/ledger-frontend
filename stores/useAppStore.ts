@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getCurrencySymbol } from '../lib/currencies';
 
 export interface Category {
     uuid: string;
@@ -31,7 +32,7 @@ export interface Transaction {
 export interface User {
     name: string;
     email: string;
-    avatar?: string;
+    profilePicture?: string;
 }
 
 interface AppState {
@@ -51,6 +52,12 @@ interface AppState {
     user: User | null;
     setUser: (user: User | null) => void;
 
+    // Currency preference
+    currency: string;
+    currencySymbol: string;
+    currencyChangedAt: string | null;
+    setCurrency: (code: string, changedAt?: string | null) => void;
+
     // Data
     categories: Category[];
     setCategories: (categories: Category[]) => void;
@@ -60,6 +67,8 @@ interface AppState {
     // Selection Pickers
     pickedIcon: string | null;
     setPickedIcon: (icon: string | null) => void;
+    pickedCategoryUuid: string | null;
+    setPickedCategory: (uuid: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -79,6 +88,16 @@ export const useAppStore = create<AppState>((set) => ({
     user: null,
     setUser: (user) => set({ user }),
 
+    // Currency preference
+    currency: 'INR',
+    currencySymbol: '₹',
+    currencyChangedAt: null,
+    setCurrency: (code, changedAt) => set({
+        currency: code,
+        currencySymbol: getCurrencySymbol(code),
+        currencyChangedAt: changedAt !== undefined ? changedAt : new Date().toISOString(),
+    }),
+
     // Data
     categories: [],
     setCategories: (categories) => set({ categories }),
@@ -87,5 +106,7 @@ export const useAppStore = create<AppState>((set) => ({
 
     // Selection Pickers
     pickedIcon: null,
-    setPickedIcon: (icon) => set({ pickedIcon: icon }),
+    setPickedIcon: (pickedIcon) => set({ pickedIcon }),
+    pickedCategoryUuid: null,
+    setPickedCategory: (pickedCategoryUuid) => set({ pickedCategoryUuid }),
 }));

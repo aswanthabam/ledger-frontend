@@ -36,7 +36,9 @@
       "expo-sqlite",
       "expo-secure-store",
       "./plugins/withWidgets.js",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ]
   }
 }

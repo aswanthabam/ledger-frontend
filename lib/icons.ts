@@ -11,6 +11,34 @@ export const QUICK_PICK_ICONS = [
 // Full icon set grouped by category for the icon browser
 export const ICON_SECTIONS: { title: string; icons: string[] }[] = [
     {
+        title: 'Finance',
+        icons: [
+            'credit-card', 'credit-card-outline', 'cash', 'cash-multiple',
+            'currency-usd', 'currency-eur', 'currency-gbp', 'currency-inr',
+            'bank', 'bank-outline', 'chart-line', 'chart-bar', 'chart-pie',
+            'trending-up', 'bitcoin', 'safe', 'piggy-bank', 'wallet',
+            'receipt', 'invoice-text',
+        ],
+    },
+    {
+        title: 'Technology',
+        icons: [
+            'cellphone', 'tablet', 'monitor', 'printer', 'keyboard',
+            'mouse', 'router-wireless', 'wifi', 'bluetooth', 'usb',
+            'memory', 'cpu-64-bit', 'harddisk', 'cloud', 'server',
+            'database', 'code-tags', 'bug', 'shield-lock', 'vpn',
+        ],
+    },
+    {
+        title: 'Personal & Family',
+        icons: [
+            'account', 'account-group', 'baby-carriage', 'human-male-female',
+            'paw', 'dog', 'cat', 'hand-heart', 'gift', 'flower',
+            'ring', 'cake', 'party-popper', 'balloon', 'cards-heart',
+            'emoticon-happy', 'face-woman', 'teddy-bear', 'toy-brick', 'stroller',
+        ],
+    },
+    {
         title: 'Food & Drinks',
         icons: [
             'food', 'food-apple', 'food-fork-drink', 'food-variant', 'food-drumstick',
@@ -80,34 +108,6 @@ export const ICON_SECTIONS: { title: string; icons: string[] }[] = [
             'basketball', 'soccer', 'tennis', 'golf', 'baseball-bat',
             'football', 'ski', 'snowboard', 'hiking', 'weight-lifter',
             'karate', 'meditation', 'rowing', 'trophy',
-        ],
-    },
-    {
-        title: 'Finance',
-        icons: [
-            'credit-card', 'credit-card-outline', 'cash', 'cash-multiple',
-            'currency-usd', 'currency-eur', 'currency-gbp', 'currency-inr',
-            'bank', 'bank-outline', 'chart-line', 'chart-bar', 'chart-pie',
-            'trending-up', 'bitcoin', 'safe', 'piggy-bank', 'wallet',
-            'receipt', 'invoice-text',
-        ],
-    },
-    {
-        title: 'Technology',
-        icons: [
-            'cellphone', 'tablet', 'monitor', 'printer', 'keyboard',
-            'mouse', 'router-wireless', 'wifi', 'bluetooth', 'usb',
-            'memory', 'cpu-64-bit', 'harddisk', 'cloud', 'server',
-            'database', 'code-tags', 'bug', 'shield-lock', 'vpn',
-        ],
-    },
-    {
-        title: 'Personal & Family',
-        icons: [
-            'account', 'account-group', 'baby-carriage', 'human-male-female',
-            'paw', 'dog', 'cat', 'hand-heart', 'gift', 'flower',
-            'ring', 'cake', 'party-popper', 'balloon', 'cards-heart',
-            'emoticon-happy', 'face-woman', 'teddy-bear', 'toy-brick', 'stroller',
         ],
     },
     {
