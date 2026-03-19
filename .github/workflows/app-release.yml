@@ -1,0 +1,57 @@
+name: Build APK & Draft Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+
+      - name: Install deps
+        run: npm install
+
+      # -------- ANDROID BUILD --------
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 21
+
+      - name: Build APKs (all architectures)
+        run: |
+          cd android
+          ./gradlew assembleRelease
+
+      # -------- COLLECT APK FILES --------
+      - name: Collect APKs
+        run: |
+          mkdir release-apks
+          find android/app/build/outputs/apk/release -name "*.apk" -exec cp {} release-apks/ \;
+
+      # -------- RENAME WITH VERSION --------
+      - name: Rename APKs with version
+        run: |
+          for file in release-apks/*.apk; do
+            mv "$file" "release-apks/$(basename "$file" .apk)-${GITHUB_REF_NAME}.apk"
+          done
+
+      # -------- CREATE DRAFT RELEASE --------
+      - name: Create Draft Release with APKs
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: release-apks/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
