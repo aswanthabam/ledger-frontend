@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Switch, Modal, TextInput, FlatList, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Switch, Modal, TextInput, FlatList, Alert, Image, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from '../../lib/secure-store';
 import { Feather, AntDesign } from '@expo/vector-icons';
@@ -64,22 +64,26 @@ export default function ProfileScreen() {
 
     async function handleSignOut() {
         const unsynced = await hasUnsyncedData();
-        if (unsynced) {
-            Alert.alert(
-                'Unsynced Changes',
-                'You have data that hasn\'t been synced to the cloud yet. Signing out will permanently delete these local changes. Are you sure?',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Sign Out Anyway', style: 'destructive', onPress: performSignOut }
-                ]
-            );
+        const title = unsynced ? 'Unsynced Changes' : 'Sign Out';
+        const message = unsynced 
+            ? 'You have data that hasn\'t been synced to the cloud yet. Signing out will permanently delete these local changes. Are you sure?'
+            : 'Are you sure you want to sign out? Your local data will be cleared and re-synced on your next login.';
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                performSignOut();
+            }
         } else {
             Alert.alert(
-                'Sign Out',
-                'Are you sure you want to sign out? Your local data will be cleared and re-synced on your next login.',
+                title,
+                message,
                 [
                     { text: 'Cancel', style: 'cancel' },
-                    { text: 'Sign Out', style: 'destructive', onPress: performSignOut }
+                    { 
+                        text: unsynced ? 'Sign Out Anyway' : 'Sign Out', 
+                        style: 'destructive', 
+                        onPress: performSignOut 
+                    }
                 ]
             );
         }
@@ -91,10 +95,22 @@ export default function ProfileScreen() {
 
     const selectedCurrencyObj = CURRENCIES.find((c) => c.code === currency);
 
+    async function handleThemeToggle() {
+        const newValue = !isDarkMode;
+        toggleDarkMode();
+        await SecureStore.setItemAsync('theme', newValue ? 'dark' : 'light');
+    }
+
     return (
         <View className="flex-1 bg-[#F9FAFB] dark:bg-[#030712]">
-            <View className="flex-1 px-6 pt-16">
-
+            <ScrollView 
+                className="flex-1" 
+                contentContainerStyle={{ 
+                    paddingHorizontal: 24, 
+                    paddingBottom: 100,
+                    paddingTop: Platform.OS === 'web' ? 24 : 64 
+                }}
+            >
                 {/* Header */}
                 <View className="flex-row items-center justify-between shadow-sm">
                     <TouchableOpacity onPress={() => router.back()} className="p-2">
@@ -143,7 +159,7 @@ export default function ProfileScreen() {
                         </View>
                         <Switch
                             value={isDarkMode}
-                            onValueChange={toggleDarkMode}
+                            onValueChange={handleThemeToggle}
                             trackColor={{ false: '#E5E7EB', true: '#10B981' }}
                             thumbColor={'#FFFFFF'}
                         />
@@ -215,7 +231,7 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                     <Text className="mt-6 text-center text-xs text-gray-400">Version 1.0.0</Text>
                 </View>
-            </View>
+            </ScrollView>
 
             {/* Currency Picker Modal */}
             <Modal

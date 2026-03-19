@@ -175,7 +175,7 @@ export async function loadDataIntoStore() {
     const store = useAppStore.getState();
 
     const categories = await db.getAllAsync(
-        `SELECT * FROM categories WHERE isDeleted = 0 ORDER BY name ASC`
+        `SELECT * FROM categories WHERE isDeleted = 0 ORDER BY createdAt ASC, name ASC`
     );
     const transactions = await db.getAllAsync(
         `SELECT * FROM transactions WHERE isDeleted = 0 ORDER BY transactionDate DESC`

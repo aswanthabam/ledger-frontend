@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppStore } from '../stores/useAppStore';
@@ -26,7 +26,6 @@ const OTHERS_CATEGORY = { name: 'Others', icon: 'dots-horizontal', type: 'expens
 
 export default function OnboardingScreen() {
     const router = useRouter();
-    const isDarkMode = useAppStore((state) => state.user === null); // Placeholder check, using dark mode from store is better
     const appDarkMode = useAppStore((state) => state.isDarkMode);
     const [selectedExpenses, setSelectedExpenses] = useState<string[]>(PRESET_EXPENSES.map(e => e.name));
     const [selectedAssets, setSelectedAssets] = useState<string[]>(PRESET_ASSETS.map(a => a.name));
@@ -96,38 +95,51 @@ export default function OnboardingScreen() {
         <TouchableOpacity
             key={cat.name}
             onPress={onPress}
+            activeOpacity={0.7}
             style={{
-                width: '31%',
+                width: '48%',
+                aspectRatio: 0.9,
                 backgroundColor: isSelected 
                     ? (appDarkMode ? cat.themeBgDark : cat.themeBgLight)
-                    : (appDarkMode ? '#111827' : '#F9FAFB'),
+                    : (appDarkMode ? '#111827' : '#FFFFFF'),
                 borderColor: isSelected 
                     ? (appDarkMode ? cat.themeFgDark : cat.themeFgLight)
-                    : 'transparent',
-                borderWidth: 1.5,
+                    : (appDarkMode ? '#374151' : '#F1F5F9'),
+                borderWidth: isSelected ? 2 : 1,
             }}
-            className="mb-3 items-center justify-center rounded-2xl p-3"
+            className="mb-4 rounded-[24px] p-5 justify-between relative"
         >
-            <View 
-                className="h-9 w-9 items-center justify-center rounded-full"
-                style={{ 
-                    backgroundColor: appDarkMode ? cat.themeBgDark : cat.themeBgLight,
-                    opacity: isSelected ? 1 : 0.5
-                }}
-            >
-                <MaterialCommunityIcons 
-                    name={cat.icon as any} 
-                    size={20} 
-                    color={appDarkMode ? cat.themeFgDark : cat.themeFgLight} 
-                />
+            <View className="flex-row justify-between items-start">
+                <View 
+                    className="h-10 w-10 items-center justify-center rounded-xl"
+                    style={{ 
+                        backgroundColor: isSelected 
+                            ? (appDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.5)') 
+                            : (appDarkMode ? '#1F2937' : '#F8FAFC')
+                    }}
+                >
+                    <MaterialCommunityIcons 
+                        name={cat.icon as any} 
+                        size={24} 
+                        color={isSelected 
+                            ? (appDarkMode ? cat.themeFgDark : cat.themeFgLight) 
+                            : (appDarkMode ? '#9CA3AF' : '#94A3B8')} 
+                    />
+                </View>
+                {isSelected && (
+                    <MaterialCommunityIcons 
+                        name="check-circle" 
+                        size={22} 
+                        color={appDarkMode ? cat.themeFgDark : cat.themeFgLight} 
+                    />
+                )}
             </View>
             <Text 
-                className="mt-2 text-center text-[11px] font-bold"
-                numberOfLines={1}
+                className="text-lg font-bold"
                 style={{ 
                     color: isSelected 
-                        ? (appDarkMode ? 'white' : 'black') 
-                        : (appDarkMode ? '#9CA3AF' : '#6B7280') 
+                        ? (appDarkMode ? 'white' : cat.themeFgLight) 
+                        : (appDarkMode ? '#9CA3AF' : '#64748B') 
                 }}
             >
                 {cat.name}
@@ -135,25 +147,94 @@ export default function OnboardingScreen() {
         </TouchableOpacity>
     );
 
+    const renderAssetCategory = (cat: any, isSelected: boolean, onPress: () => void) => (
+        <TouchableOpacity
+            key={cat.name}
+            onPress={onPress}
+            activeOpacity={0.7}
+            style={{
+                backgroundColor: isSelected 
+                    ? (appDarkMode ? cat.themeBgDark : cat.themeBgLight)
+                    : (appDarkMode ? '#111827' : '#F1F5F9'),
+                borderColor: isSelected 
+                    ? (appDarkMode ? cat.themeFgDark : cat.themeFgLight)
+                    : 'transparent',
+                borderWidth: isSelected ? 1.5 : 0,
+            }}
+            className="flex-row items-center px-5 py-3 rounded-full mr-2 mb-3"
+        >
+            <MaterialCommunityIcons 
+                name={cat.icon as any} 
+                size={20} 
+                color={isSelected 
+                    ? (appDarkMode ? cat.themeFgDark : cat.themeFgLight) 
+                    : (appDarkMode ? '#9CA3AF' : '#475569')} 
+                style={{ marginRight: 8 }}
+            />
+            <Text 
+                className="text-[15px] font-semibold"
+                style={{ 
+                    color: isSelected 
+                        ? (appDarkMode ? 'white' : cat.themeFgLight) 
+                        : (appDarkMode ? '#D1D5DB' : '#1E293B') 
+                }}
+            >
+                {cat.name}
+            </Text>
+            {isSelected && (
+                <MaterialCommunityIcons 
+                    name="check" 
+                    size={16} 
+                    color={appDarkMode ? cat.themeFgDark : cat.themeFgLight} 
+                    style={{ marginLeft: 6 }}
+                />
+            )}
+        </TouchableOpacity>
+    );
+
+    const SectionHeader = ({ title, badge }: { title: string, badge: string }) => (
+        <View className="flex-row items-center justify-between mb-5">
+            <Text className="text-[11px] font-black uppercase tracking-[2px] text-gray-400 dark:text-gray-500">{title}</Text>
+            <View className="bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md">
+                <Text className="text-[10px] font-bold text-blue-600 dark:text-blue-400">{badge}</Text>
+            </View>
+        </View>
+    );
+
     return (
-        <SafeAreaView className="flex-1 bg-white dark:bg-[#030712]">
-            <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 40, paddingBottom: 150 }}>
-                <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100">Quick Setup</Text>
-                <Text className="mt-2 text-base text-gray-500 dark:text-gray-400">
-                    Select categories you'd like to use. We've automatically added 'Others' for everything else.
+        <View 
+            className="flex-1 bg-[#F8FAFC] dark:bg-[#030712]"
+            style={{ paddingTop: Platform.OS === 'web' ? 24 : 48 }}
+        >
+            <View className="px-6 pb-2 flex-row justify-end">
+                <TouchableOpacity onPress={() => router.replace('/(app)')}>
+                    <View className="flex-row items-center">
+                        <Text className="text-gray-500 dark:text-gray-400 font-semibold mr-1">Skip</Text>
+                        <MaterialCommunityIcons name="chevron-right" size={18} color="#9CA3AF" />
+                    </View>
+                </TouchableOpacity>
+            </View>
+
+            <ScrollView 
+                className="flex-1"
+                contentContainerStyle={{ padding: 24, paddingTop: 10, paddingBottom: 150 }}
+            >
+                <Text className="text-[40px] font-bold text-gray-900 dark:text-gray-100 leading-[48px]">Tailor Your Tracking</Text>
+                <Text className="mt-4 text-[17px] text-gray-500 dark:text-gray-400 leading-6 font-medium">
+                    Select the categories you'd like to start with. You can always add more later.
                 </Text>
 
-                <View className="mt-8">
-                    <Text className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Expense Categories</Text>
-                    <View className="flex-row flex-wrap justify-start" style={{ gap: 8 }}>
+                <View className="mt-10">
+                    <SectionHeader title="Expense Categories" badge="01" />
+                    <View className="flex-row flex-wrap justify-between">
                         {PRESET_EXPENSES.map((cat) => renderCategory(cat, selectedExpenses.includes(cat.name), () => toggleExpense(cat.name)))}
                     </View>
                 </View>
 
                 <View className="mt-8">
-                    <Text className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">Asset Categories</Text>
-                    <View className="flex-row flex-wrap justify-start" style={{ gap: 8 }}>
-                        {PRESET_ASSETS.map((cat) => renderCategory(cat, selectedAssets.includes(cat.name), () => toggleAsset(cat.name)))}
+                    <SectionHeader title="Asset Categories" badge="02" />
+                    <View className="flex-row flex-wrap">
+                        {PRESET_ASSETS.map((cat) => renderAssetCategory(cat, selectedAssets.includes(cat.name), () => toggleAsset(cat.name)))}
                     </View>
                 </View>
             </ScrollView>
@@ -162,13 +243,15 @@ export default function OnboardingScreen() {
                 <TouchableOpacity
                     disabled={loading}
                     onPress={handleGetStarted}
-                    className="items-center justify-center rounded-full py-5 bg-black dark:bg-white shadow-xl"
+                    activeOpacity={0.8}
+                    className="flex-row items-center justify-center rounded-[24px] py-6 bg-[#0F172A] dark:bg-white shadow-2xl"
                 >
-                    <Text className="text-lg font-bold text-white dark:text-black">
-                        {loading ? 'Setting up...' : 'Finish Setup'}
+                    <Text className="text-lg font-black text-white dark:text-[#0F172A] mr-2">
+                        {loading ? 'Setting up...' : 'Start Tracking'}
                     </Text>
+                    {!loading && <MaterialCommunityIcons name="arrow-right" size={24} color={appDarkMode ? '#0F172A' : '#FFFFFF'} />}
                 </TouchableOpacity>
             </View>
-        </SafeAreaView>
+        </View>
     );
 }

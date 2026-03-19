@@ -38,6 +38,7 @@ export interface User {
 interface AppState {
     // UI
     isDarkMode: boolean;
+    setDarkMode: (isDark: boolean) => void;
     toggleDarkMode: () => void;
 
     // Sync
@@ -74,6 +75,7 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
     // UI
     isDarkMode: false,
+    setDarkMode: (isDark: boolean) => set({ isDarkMode: isDark }),
     toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
 
     // Sync

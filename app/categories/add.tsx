@@ -121,7 +121,10 @@ export default function AddCategoryScreen() {
             className="flex-1 bg-white dark:bg-[#030712]"
         >
             {/* Header */}
-            <View className="flex-row items-center justify-between px-6 pt-16 pb-4">
+            <View 
+                className="flex-row items-center justify-between px-6 pb-4"
+                style={{ paddingTop: Platform.OS === 'web' ? 24 : 64 }}
+            >
                 <TouchableOpacity onPress={() => router.back()} className="p-2">
                     <AntDesign name="arrow-left" size={24} color={isDarkMode ? 'white' : 'black'} />
                 </TouchableOpacity>

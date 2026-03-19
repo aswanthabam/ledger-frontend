@@ -1,12 +1,13 @@
 import * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
-let dbInstance: SQLite.SQLiteDatabase | null = null;
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+
 // Setup SQLite Instance
 export const getDB = async () => {
-    if (!dbInstance) {
-        dbInstance = await SQLite.openDatabaseAsync('ledger.db');
+    if (!dbPromise) {
+        dbPromise = SQLite.openDatabaseAsync('ledger.db');
     }
-    return dbInstance;
+    return dbPromise;
 };
 
 export const initDB = async () => {
@@ -27,7 +28,9 @@ export const initDB = async () => {
         isDefault INTEGER DEFAULT 0,
         isDeleted INTEGER DEFAULT 0,
         isSynced INTEGER DEFAULT 0,
-        serverUpdatedAt INTEGER DEFAULT 0
+        serverUpdatedAt INTEGER DEFAULT 0,
+        createdAt INTEGER DEFAULT 0,
+        updatedAt INTEGER DEFAULT 0
       );
 
       CREATE TABLE IF NOT EXISTS transactions (
@@ -40,9 +43,42 @@ export const initDB = async () => {
         isDeleted INTEGER DEFAULT 0,
         isSynced INTEGER DEFAULT 0,
         serverUpdatedAt INTEGER DEFAULT 0,
+        createdAt INTEGER DEFAULT 0,
+        updatedAt INTEGER DEFAULT 0,
         FOREIGN KEY (categoryUuid) REFERENCES categories(uuid)
       );
     `);
+    
+    // Migration: Categories
+    try {
+        const catInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(categories)`);
+        const now = Date.now();
+        
+        if (!catInfo.find(col => col.name === 'createdAt')) {
+            await db.execAsync(`ALTER TABLE categories ADD COLUMN createdAt INTEGER DEFAULT ${now}`);
+        }
+        if (!catInfo.find(col => col.name === 'updatedAt')) {
+            await db.execAsync(`ALTER TABLE categories ADD COLUMN updatedAt INTEGER DEFAULT ${now}`);
+        }
+    } catch (e) {
+        console.warn('Categories migration error:', e);
+    }
+
+    // Migration: Transactions
+    try {
+        const txnInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(transactions)`);
+        const now = Date.now();
+
+        if (!txnInfo.find(col => col.name === 'createdAt')) {
+            await db.execAsync(`ALTER TABLE transactions ADD COLUMN createdAt INTEGER DEFAULT ${now}`);
+        }
+        if (!txnInfo.find(col => col.name === 'updatedAt')) {
+            await db.execAsync(`ALTER TABLE transactions ADD COLUMN updatedAt INTEGER DEFAULT ${now}`);
+        }
+    } catch (e) {
+        console.warn('Transactions migration error:', e);
+    }
+
     console.log("Database initialized");
 };
 
@@ -57,40 +93,50 @@ export async function getCategories(type?: 'expense' | 'asset') {
     const db = await getDB();
     if (type) {
         return db.getAllAsync(
-            `SELECT * FROM categories WHERE isDeleted = 0 AND type = ? ORDER BY name ASC`,
+            `SELECT * FROM categories WHERE isDeleted = 0 AND type = ? ORDER BY createdAt ASC, name ASC`,
             [type]
         );
     }
-    return db.getAllAsync(`SELECT * FROM categories WHERE isDeleted = 0 ORDER BY name ASC`);
+    return db.getAllAsync(`SELECT * FROM categories WHERE isDeleted = 0 ORDER BY createdAt ASC, name ASC`);
 }
 
 export async function insertCategory(cat: {
     uuid: string; name: string; type: string; icon: string; iconType: string;
     themeBgLight: string; themeBgDark: string; themeFgLight: string; themeFgDark: string;
+    createdAt?: number;
 }) {
     const db = await getDB();
+    const now = Date.now();
+    const createdAt = cat.createdAt || now;
+    const updatedAt = now;
     const params = [
         cat.uuid, cat.name, cat.type, cat.icon, cat.iconType,
-        cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark
-    ].map(val => val === undefined ? null : val); // Convert undefined to null
-    console.log("Params", params)
-    await db.runAsync(`INSERT INTO categories (uuid, name, type, icon, iconType, themeBgLight, themeBgDark, themeFgLight, themeFgDark, isSynced)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`, params);
+        cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark,
+        createdAt, updatedAt
+    ].map(val => val === undefined ? null : val);
+    await db.runAsync(`INSERT INTO categories (uuid, name, type, icon, iconType, themeBgLight, themeBgDark, themeFgLight, themeFgDark, isSynced, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`, params);
 }
 
 export async function bulkInsertCategories(categories: {
     uuid: string; name: string; type: string; icon: string; iconType: string;
     themeBgLight: string; themeBgDark: string; themeFgLight: string; themeFgDark: string;
+    createdAt?: number;
 }[]) {
     const db = await getDB();
     await db.withTransactionAsync(async () => {
+        let now = Date.now();
         for (const cat of categories) {
+            // Increment timestamp slightly to ensure order if created in a loop
+            const timestamp = cat.createdAt || now++;
+            const updatedAt = timestamp;
             const params = [
                 cat.uuid, cat.name, cat.type, cat.icon, cat.iconType,
-                cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark
+                cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark,
+                timestamp, updatedAt
             ].map(val => val === undefined ? null : val);
-            await db.runAsync(`INSERT INTO categories (uuid, name, type, icon, iconType, themeBgLight, themeBgDark, themeFgLight, themeFgDark, isSynced)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`, params);
+            await db.runAsync(`INSERT INTO categories (uuid, name, type, icon, iconType, themeBgLight, themeBgDark, themeFgLight, themeFgDark, isSynced, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`, params);
         }
     });
 }
@@ -108,16 +154,17 @@ export async function updateCategory(cat: {
     themeBgLight: string; themeBgDark: string; themeFgLight: string; themeFgDark: string;
 }) {
     const db = await getDB();
+    const updatedAt = Date.now();
     const params = [
         cat.name, cat.type, cat.icon, cat.iconType,
         cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark,
-        cat.uuid
+        updatedAt, cat.uuid
     ].map(val => val === undefined ? null : val);
     await db.runAsync(
         `UPDATE categories 
          SET name = ?, type = ?, icon = ?, iconType = ?, 
              themeBgLight = ?, themeBgDark = ?, themeFgLight = ?, themeFgDark = ?,
-             isSynced = 0 
+             isSynced = 0, updatedAt = ?
          WHERE uuid = ?`,
         params
     );
@@ -151,10 +198,11 @@ export async function insertTransaction(txn: {
     transactionDate: string; note: string;
 }) {
     const db = await getDB();
+    const now = Date.now();
     await db.runAsync(
-        `INSERT INTO transactions (uuid, categoryUuid, type, amount, transactionDate, note, isSynced)
-         VALUES (?, ?, ?, ?, ?, ?, 0)`,
-        [txn.uuid, txn.categoryUuid, txn.type, txn.amount, txn.transactionDate, txn.note]
+        `INSERT INTO transactions (uuid, categoryUuid, type, amount, transactionDate, note, isSynced, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+        [txn.uuid, txn.categoryUuid, txn.type, txn.amount, txn.transactionDate, txn.note, now, now]
     );
 }
 
@@ -163,11 +211,12 @@ export async function updateTransaction(txn: {
     transactionDate: string; note: string;
 }) {
     const db = await getDB();
+    const now = Date.now();
     await db.runAsync(
         `UPDATE transactions 
-         SET categoryUuid = ?, type = ?, amount = ?, transactionDate = ?, note = ?, isSynced = 0 
+         SET categoryUuid = ?, type = ?, amount = ?, transactionDate = ?, note = ?, isSynced = 0, updatedAt = ?
          WHERE uuid = ?`,
-        [txn.categoryUuid, txn.type, txn.amount, txn.transactionDate, txn.note, txn.uuid]
+        [txn.categoryUuid, txn.type, txn.amount, txn.transactionDate, txn.note, now, txn.uuid]
     );
 }
 

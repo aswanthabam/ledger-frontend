@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather, AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppStore, Category, Transaction } from '../../stores/useAppStore';
@@ -132,7 +132,11 @@ export default function HomeDashboard() {
 
     return (
         <View className="flex-1 bg-[#F6F8F6] dark:bg-[#030712]">
-            <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 60, paddingBottom: 120 }}>
+            <ScrollView contentContainerStyle={{ 
+                padding: 24, 
+                paddingTop: Platform.OS === 'web' ? 24 : 60, 
+                paddingBottom: 120 
+            }}>
                 <View className="flex-row items-center justify-between">
                     <View>
                         <Text className="text-xl font-medium text-gray-900 dark:text-gray-100">Welcome {user?.name || 'User'}</Text>

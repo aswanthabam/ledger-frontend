@@ -144,7 +144,10 @@ export default function AddTransactionScreen() {
             <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 100 }}>
 
                 {/* Header */}
-                <View className="mt-8 flex-row items-center justify-between">
+                <View 
+                    className="flex-row items-center justify-between"
+                    style={{ marginTop: Platform.OS === 'web' ? 0 : 32 }}
+                >
                     <TouchableOpacity onPress={() => router.back()} className="p-2">
                         <AntDesign name="arrow-left" size={24} color={isDarkMode ? 'white' : 'black'} />
                     </TouchableOpacity>
@@ -164,7 +167,10 @@ export default function AddTransactionScreen() {
                         </Text>
                         <TextInput
                             className="ml-1 text-6xl font-black text-gray-900 dark:text-gray-100"
-                            style={{ includeFontPadding: false, lineHeight: 72, padding: 0 }}
+                            style={Platform.select({
+                                web: { outlineStyle: 'none' as any, minWidth: 150, padding: 0 },
+                                default: { includeFontPadding: false, lineHeight: 72, padding: 0 }
+                            })}
                             value={amount}
                             onChangeText={setAmount}
                             keyboardType="decimal-pad"

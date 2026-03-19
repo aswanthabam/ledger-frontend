@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, Image } from 'react-native';
+import { View, Text, ActivityIndicator, Image, Appearance } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from '../lib/secure-store';
 import { runSync } from '../lib/sync';
 import { useAppStore } from '../stores/useAppStore';
+import { bootApp } from '../lib/boot';
 
 export default function SplashScreen() {
     const router = useRouter();
@@ -13,38 +14,13 @@ export default function SplashScreen() {
     useEffect(() => {
         async function boot() {
             try {
-                const token = await SecureStore.getItemAsync('authToken');
+                // Perform shared boot logic
+                await bootApp();
 
+                const token = await SecureStore.getItemAsync('authToken');
                 if (!token) {
                     router.replace('/sign-in');
                     return;
-                }
-
-                // Restore user info from local storage
-                const userName = await SecureStore.getItemAsync('userName');
-                const userEmail = await SecureStore.getItemAsync('userEmail');
-                const userProfilePicture = await SecureStore.getItemAsync('userProfilePicture');
-                if (userName || userEmail) {
-                    setUser({
-                        name: userName || 'User',
-                        email: userEmail || '',
-                        profilePicture: userProfilePicture || undefined
-                    });
-                }
-
-                // Run sync to pull latest data from server
-                setStatus('Syncing data...');
-                try {
-                    await runSync();
-                } catch (syncError: any) {
-                    if (syncError.message === 'UNAUTHORIZED') {
-                        // Token expired
-                        await SecureStore.deleteItemAsync('authToken');
-                        router.replace('/sign-in');
-                        return;
-                    }
-                    // Non-auth sync errors are ok — we continue with local data
-                    console.warn('Sync on boot failed:', syncError.message);
                 }
 
                 // Check for categories
@@ -68,7 +44,7 @@ export default function SplashScreen() {
             <View className="mb-6 h-24 w-24 items-center justify-center overflow-hidden rounded-3xl bg-white shadow-sm dark:bg-gray-900">
                 <Image
                     source={require('../assets/icon.png')}
-                    className="h-full w-full"
+                    style={{ width: 96, height: 96 }}
                     resizeMode="contain"
                 />
             </View>

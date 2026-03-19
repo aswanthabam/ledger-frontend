@@ -30,18 +30,29 @@ export default function SignInScreen() {
         iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '',
         androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '',
         redirectUri,
+        responseType: 'id_token',
     });
+
+    useEffect(() => {
+        console.log("Auth Request:", request);
+    }, [request]);
 
     useEffect(() => {
         console.log("response receive:", response)
         if (response?.type === 'success') {
 
-            const { authentication } = response;
-            if (authentication?.idToken) {
-                handleBackendVerification(authentication.idToken);
-            } else if (authentication?.accessToken) {
-                // Some flows return accessToken instead
-                handleBackendVerification(authentication.accessToken);
+            const idToken =
+                response.authentication?.idToken ||
+                response.params?.id_token;
+
+            const accessToken =
+                response.authentication?.accessToken ||
+                response.params?.access_token;
+
+            if (idToken) {
+                handleBackendVerification(idToken);
+            } else if (accessToken) {
+                handleBackendVerification(accessToken);
             }
         } else if (response?.type === 'error') {
             setError('Authentication failed. Please try again.');
@@ -113,7 +124,7 @@ export default function SignInScreen() {
             <View className="mb-4 h-24 w-24 items-center justify-center overflow-hidden rounded-3xl bg-white shadow-sm dark:bg-gray-900">
                 <Image
                     source={require('../assets/icon.png')}
-                    className="h-full w-full"
+                    style={{ width: 96, height: 96 }}
                     resizeMode="contain"
                 />
             </View>

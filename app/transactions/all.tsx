@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, SectionList } from 'react-native';
+import { View, Text, TouchableOpacity, SectionList, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { useAppStore, Transaction, Category } from '../../stores/useAppStore';
@@ -144,7 +144,10 @@ export default function AllTransactionsScreen() {
         <View className="flex-1 bg-[#F9FAFB] dark:bg-[#030712]">
 
             {/* Header */}
-            <View className="flex-row items-center justify-between px-6 pt-16 pb-4">
+            <View 
+                className="flex-row items-center justify-between px-6 pb-4"
+                style={{ paddingTop: Platform.OS === 'web' ? 24 : 64 }}
+            >
                 <TouchableOpacity onPress={() => router.back()} className="p-2">
                     <AntDesign name="arrow-left" size={24} color={isDarkMode ? 'white' : 'black'} />
                 </TouchableOpacity>
