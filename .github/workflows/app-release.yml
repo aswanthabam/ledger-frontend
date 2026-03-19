@@ -1,4 +1,4 @@
-name: Build APK & Draft Release
+name: Android Release
 
 on:
   push:
@@ -6,19 +6,31 @@ on:
       - 'v*'
 
 jobs:
-  release:
+  build-android:
     runs-on: ubuntu-latest
+
+    env:
+      # -------- EXPO / APP ENV (from GitHub Variables) --------
+      EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+      EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
+
+      # -------- ANDROID SIGNING (from GitHub Secrets) --------
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # -------- NODE SETUP --------
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 24.13.0
 
-      - name: Install deps
+      - name: Install dependencies
         run: npm install
 
       # -------- ANDROID BUILD --------
@@ -28,30 +40,52 @@ jobs:
           distribution: 'temurin'
           java-version: 21
 
-      - name: Build APKs (all architectures)
+      # -------- RESTORE ANDROID KEYSTORE --------
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
+
+      # -------- GRADLE CACHE (faster builds) --------
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      # -------- BUILD APKs --------
+      - name: Build APKs
         run: |
           cd android
           ./gradlew assembleRelease
 
-      # -------- COLLECT APK FILES --------
-      - name: Collect APKs
+      # -------- BUILD AAB (optional but recommended) --------
+      - name: Build AAB
         run: |
-          mkdir release-apks
-          find android/app/build/outputs/apk/release -name "*.apk" -exec cp {} release-apks/ \;
+          cd android
+          ./gradlew bundleRelease
 
-      # -------- RENAME WITH VERSION --------
-      - name: Rename APKs with version
+      # -------- COLLECT ARTIFACTS --------
+      - name: Collect artifacts
         run: |
-          for file in release-apks/*.apk; do
-            mv "$file" "release-apks/$(basename "$file" .apk)-${GITHUB_REF_NAME}.apk"
+          mkdir release-artifacts
+          find android/app/build/outputs -name "*.apk" -exec cp {} release-artifacts/ \;
+          find android/app/build/outputs -name "*.aab" -exec cp {} release-artifacts/ \;
+
+      # -------- RENAME FILES WITH VERSION --------
+      - name: Rename artifacts
+        run: |
+          for file in release-artifacts/*; do
+            mv "$file" "release-artifacts/$(basename "$file" | sed "s/.apk/-${GITHUB_REF_NAME}.apk/; s/.aab/-${GITHUB_REF_NAME}.aab/")"
           done
 
       # -------- CREATE DRAFT RELEASE --------
-      - name: Create Draft Release with APKs
+      - name: Create Draft Release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           generate_release_notes: true
-          files: release-apks/*.apk
+          files: release-artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
