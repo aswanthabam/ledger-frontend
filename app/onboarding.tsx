@@ -22,7 +22,8 @@ const PRESET_ASSETS = [
     { name: 'FD', icon: 'safe', type: 'asset', themeBgLight: '#FEF3C7', themeBgDark: '#78350F', themeFgLight: '#D97706', themeFgDark: '#FBBF24' },
 ];
 
-const OTHERS_CATEGORY = { name: 'Others', icon: 'dots-horizontal', type: 'expense', themeBgLight: '#F3F4F6', themeBgDark: '#374151', themeFgLight: '#4B5563', themeFgDark: '#D1D5DB' };
+const OTHERS_EXPENSE_CATEGORY = { name: 'Others', icon: 'dots-horizontal', type: 'expense', themeBgLight: '#F3F4F6', themeBgDark: '#374151', themeFgLight: '#4B5563', themeFgDark: '#D1D5DB' };
+const OTHERS_ASSET_CATEGORY = { name: 'Others', icon: 'dots-horizontal', type: 'asset', themeBgLight: '#F3F4F6', themeBgDark: '#374151', themeFgLight: '#4B5563', themeFgDark: '#D1D5DB' };
 
 export default function OnboardingScreen() {
     const router = useRouter();
@@ -45,7 +46,8 @@ export default function OnboardingScreen() {
             const selected = [
                 ...PRESET_EXPENSES.filter(e => selectedExpenses.includes(e.name)),
                 ...PRESET_ASSETS.filter(a => selectedAssets.includes(a.name)),
-                OTHERS_CATEGORY
+                OTHERS_EXPENSE_CATEGORY,
+                OTHERS_ASSET_CATEGORY
             ];
 
             const categoriesToCreate = selected.map(preset => ({

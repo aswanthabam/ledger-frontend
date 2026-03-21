@@ -4,7 +4,8 @@
     "slug": "ledger-frontend",
     "scheme": [
       "com.ledger.app",
-      "com.googleusercontent.apps.718189168936-vlpef9ft1m9s5g6qijt7ujl17ag8s7gd"
+      "com.googleusercontent.apps.718189168936-vlpef9ft1m9s5g6qijt7ujl17ag8s7gd",
+      "com.googleusercontent.apps.718189168936-5d1vu36866dpbg0qt2itdkecjlm8n9e4"
     ],
     "version": "1.0.0",
     "orientation": "portrait",

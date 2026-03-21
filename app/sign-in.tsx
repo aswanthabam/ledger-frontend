@@ -16,13 +16,13 @@ WebBrowser.maybeCompleteAuthSession();
 export default function SignInScreen() {
     const router = useRouter();
     const setUser = useAppStore((state) => state.setUser);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+
 
     const redirectUri = AuthSession.makeRedirectUri({
-        scheme: Platform.OS === 'android'
-            ? 'com.googleusercontent.apps.718189168936-vlpef9ft1m9s5g6qijt7ujl17ag8s7gd'
-            : 'com.ledger.app',
+        scheme:
+            Platform.OS === 'android'
+                ? `com.googleusercontent.apps.${process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID?.split('.')[0]}`
+                : 'com.ledger.app',
     });
 
     const [request, response, promptAsync] = Google.useAuthRequest({
@@ -30,17 +30,22 @@ export default function SignInScreen() {
         iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '',
         androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '',
         redirectUri,
-        responseType: 'id_token',
+        responseType: Platform.OS === 'web' ? 'id_token' : 'code',
     });
+
+    const [loading, setLoading] = useState(!!response);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         console.log("Auth Request:", request);
     }, [request]);
 
     useEffect(() => {
-        console.log("response receive:", response)
-        if (response?.type === 'success') {
+        if (!response) return;
 
+        console.log("response receive:", response)
+
+        if (response.type === 'success') {
             const idToken =
                 response.authentication?.idToken ||
                 response.params?.id_token;
@@ -53,9 +58,14 @@ export default function SignInScreen() {
                 handleBackendVerification(idToken);
             } else if (accessToken) {
                 handleBackendVerification(accessToken);
+            } else {
+                setLoading(false);
+                setError('Authentication succeeded but no token was received.');
             }
-        } else if (response?.type === 'error') {
+        } else if (response.type === 'error') {
             setError('Authentication failed. Please try again.');
+            setLoading(false);
+        } else if (response.type === 'cancel' || response.type === 'dismiss') {
             setLoading(false);
         }
     }, [response]);
