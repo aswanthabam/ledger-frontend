@@ -1,8 +1,8 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Feather, AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, AntDesign, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useAppStore, Category, Transaction } from '../../stores/useAppStore';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import CategoryIcon from '../../components/CategoryIcon';
 
 export default function HomeDashboard() {
@@ -62,20 +62,31 @@ export default function HomeDashboard() {
 
     // Category breakdown
     const categorySpending = useMemo(() => {
-        const map: Record<string, number> = {};
+        const currentMap: Record<string, number> = {};
         monthTransactions.filter((t: Transaction) => t.type === 'expense').forEach((t: Transaction) => {
-            map[t.categoryUuid] = (map[t.categoryUuid] || 0) + t.amount;
+            currentMap[t.categoryUuid] = (currentMap[t.categoryUuid] || 0) + t.amount;
         });
-        return Object.entries(map)
-            .map(([uuid, amount]) => ({
-                category: categories.find((c: Category) => c.uuid === uuid),
-                amount,
-                pct: spent > 0 ? Math.round((amount / spent) * 100) : 0,
-            }))
+
+        const prevMap: Record<string, number> = {};
+        prevMonthTransactions.filter((t: Transaction) => t.type === 'expense').forEach((t: Transaction) => {
+            prevMap[t.categoryUuid] = (prevMap[t.categoryUuid] || 0) + t.amount;
+        });
+
+        return Object.entries(currentMap)
+            .map(([uuid, amount]) => {
+                const prevAmount = prevMap[uuid] || 0;
+                const pctChange = prevAmount === 0 ? 0 : Math.round(((amount - prevAmount) / prevAmount) * 100);
+                return {
+                    category: categories.find((c: Category) => c.uuid === uuid),
+                    amount,
+                    pctOfTotal: spent > 0 ? Math.round((amount / spent) * 100) : 0,
+                    pctChange,
+                };
+            })
             .filter((c) => c.category)
             .sort((a, b) => b.amount - a.amount)
             .slice(0, 5);
-    }, [monthTransactions, categories, spent]);
+    }, [monthTransactions, prevMonthTransactions, categories, spent]);
 
     // Recent activity (last 5)
     const recentActivity = useMemo(() => {
@@ -117,44 +128,68 @@ export default function HomeDashboard() {
     const formatCents = (cents: number) => formatAmount(cents).split('.')[1];
 
     const getTrendBadgeStyle = (pctChange: number) => {
-        if (pctChange > 0) return { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600 dark:text-red-400', icon: 'trending-up' };
-        if (pctChange < 0) return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400', icon: 'trending-down' };
-        return { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-500 dark:text-gray-400', icon: 'minus' };
+        if (pctChange > 0) return { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600 dark:text-red-400', icon: 'trending-up', color: isDarkMode ? '#ef4444' : '#dc2626' };
+        if (pctChange < 0) return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400', icon: 'trending-down', color: isDarkMode ? '#4ade80' : '#16a34a' };
+        return { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-500 dark:text-gray-400', icon: 'minus', color: isDarkMode ? '#9ca3af' : '#6b7280' };
     };
 
     const spentTrend = getTrendBadgeStyle(spentPctChange);
     // For investments, going up is good (green), down is bad (red) - reverse of expenses
     const investedTrend = investedPctChange > 0
-        ? { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400', icon: 'trending-up' }
+        ? { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400', icon: 'trending-up', color: isDarkMode ? '#4ade80' : '#16a34a' }
         : investedPctChange < 0
-            ? { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600 dark:text-red-400', icon: 'trending-down' }
-            : { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-500 dark:text-gray-400', icon: 'minus' };
+            ? { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600 dark:text-red-400', icon: 'trending-down', color: isDarkMode ? '#ef4444' : '#dc2626' }
+            : { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-500 dark:text-gray-400', icon: 'minus', color: isDarkMode ? '#9ca3af' : '#6b7280' };
+
+    const [touchStartX, setTouchStartX] = useState(0);
+
+    const onTouchStart = (e: any) => {
+        setTouchStartX(e.nativeEvent.pageX);
+    };
+
+    const onTouchEnd = (e: any) => {
+        const touchEndX = e.nativeEvent.pageX;
+        const distance = touchEndX - touchStartX;
+        if (distance > 50) {
+            changeMonth(-1);
+        } else if (distance < -50) {
+            changeMonth(1);
+        }
+    };
 
     return (
         <View className="flex-1 bg-[#F6F8F6] dark:bg-[#030712]">
-            <ScrollView contentContainerStyle={{ 
-                padding: 24, 
-                paddingTop: Platform.OS === 'web' ? 24 : 60, 
-                paddingBottom: 120 
+            <ScrollView contentContainerStyle={{
+                padding: 24,
+                paddingTop: Platform.OS === 'web' ? 24 : 60,
+                paddingBottom: 120
             }}>
                 <View className="flex-row items-center justify-between">
                     <View>
                         <Text className="text-xl font-medium text-gray-900 dark:text-gray-100">Welcome {user?.name || 'User'}</Text>
                     </View>
-                    <TouchableOpacity
-                        onPress={() => router.push('/(app)/profile')}
-                        className="h-12 w-12 overflow-hidden items-center justify-center rounded-full border-2 border-white bg-green-100 shadow-sm dark:border-gray-800 dark:bg-green-900/30"
-                    >
-                        {user?.profilePicture ? (
-                            <Image
-                                source={{ uri: user.profilePicture }}
-                                className="h-full w-full"
-                                resizeMode="cover"
-                            />
-                        ) : (
-                            <Feather name="user" size={24} color="#10B981" />
-                        )}
-                    </TouchableOpacity>
+                    <View className="flex-row items-center">
+                        <TouchableOpacity
+                            onPress={() => router.push('/(app)/analytics')}
+                            className="mr-2 items-center justify-center p-2"
+                        >
+                            <MaterialIcons name="insights" size={24} color={isDarkMode ? '#FFFFFF' : '#111827'} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => router.push('/(app)/profile')}
+                            className="h-12 w-12 overflow-hidden items-center justify-center rounded-full border-2 border-white bg-green-100 shadow-sm dark:border-gray-800 dark:bg-green-900/30"
+                        >
+                            {user?.profilePicture ? (
+                                <Image
+                                    source={{ uri: user.profilePicture }}
+                                    className="h-full w-full"
+                                    resizeMode="cover"
+                                />
+                            ) : (
+                                <Feather name="user" size={24} color="#10B981" />
+                            )}
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Month Selector */}
@@ -171,12 +206,16 @@ export default function HomeDashboard() {
                 </View>
 
                 {/* Main Card */}
-                <View className="mt-8 rounded-[32px] bg-white p-6 shadow-sm shadow-gray-200/50 dark:bg-gray-900 dark:shadow-none">
+                <View 
+                    className="mt-8 rounded-[32px] bg-white p-6 shadow-sm shadow-gray-200/50 dark:bg-gray-900 dark:shadow-none"
+                    onTouchStart={onTouchStart}
+                    onTouchEnd={onTouchEnd}
+                >
                     {/* Spent */}
                     <View className="flex-row items-center justify-between">
                         <Text className="text-sm font-bold tracking-widest text-[#9CA3AF]">Spent</Text>
                         <View className={`flex-row items-center rounded-full px-2 py-1 ${spentTrend.bg}`}>
-                            <Feather name={spentTrend.icon as any} size={12} className={spentTrend.text} />
+                            <Feather name={spentTrend.icon as any} size={12} color={spentTrend.color} />
                             <Text className={`ml-1 text-xs font-bold leading-tight ${spentTrend.text}`}>{formatPctBadge(spentPctChange)}</Text>
                         </View>
                     </View>
@@ -190,7 +229,7 @@ export default function HomeDashboard() {
                     <View className="flex-row items-center justify-between">
                         <Text className="text-xs font-bold tracking-widest text-[#9CA3AF]">INVESTED</Text>
                         <View className={`flex-row items-center rounded-full px-2 py-1 ${investedTrend.bg}`}>
-                            <Feather name={investedTrend.icon as any} size={12} className={investedTrend.text} />
+                            <Feather name={investedTrend.icon as any} size={12} color={investedTrend.color} />
                             <Text className={`ml-1 text-xs font-bold leading-tight ${investedTrend.text}`}>{formatPctBadge(investedPctChange)}</Text>
                         </View>
                     </View>
@@ -202,7 +241,12 @@ export default function HomeDashboard() {
                 {/* Spend By Category */}
                 <View className="mt-10 flex-row items-center justify-between mb-6">
                     <Text className="text-[11px] font-bold tracking-[0.15em] text-[#9CA3AF]">SPEND BY CATEGORY</Text>
-                    <TouchableOpacity onPress={() => router.push('/categories/manage')}>
+                    <TouchableOpacity onPress={() => {
+                        const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).toISOString();
+                        const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
+                        const rangeName = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                        router.push({ pathname: '/(app)/spending-analysis', params: { range: rangeName, start, end } });
+                    }}>
                         <Text className="text-sm font-bold text-[#10B981]">View All</Text>
                     </TouchableOpacity>
                 </View>
@@ -219,14 +263,21 @@ export default function HomeDashboard() {
                                         <View className="flex-1">
                                             <Text className="ml-4 text-base font-semibold text-[#111827] dark:text-white">{item.category!.name}</Text>
                                             <View className="ml-4 mt-3 w-full flex-row h-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-                                                <View className="h-full rounded-full" style={{ width: `${item.pct}%`, backgroundColor: isDarkMode ? item.category!.themeFgDark : item.category!.themeFgLight }} />
+                                                <View className="h-full rounded-full" style={{ width: `${item.pctOfTotal}%`, backgroundColor: isDarkMode ? item.category!.themeFgDark : item.category!.themeFgLight }} />
                                             </View>
                                         </View>
                                     </View>
                                     <View className="items-end justify-center">
-                                        <Text className="text-base font-bold text-[#111827] dark:text-white">{currencySymbol}{formatAmount(item.amount)}</Text>
-                                        <Text className="text-[10px] font-bold text-[#9CA3AF] mt-0.5">{item.pct}%</Text>
-
+                                        <View className="flex-row items-center">
+                                            <Text className="text-base font-bold text-[#111827] dark:text-white">{currencySymbol}{formatAmount(item.amount)}</Text>
+                                            {item.pctChange !== 0 && <View className={`flex-row items-center rounded-full px-1.5 py-0.5 ml-2 ${getTrendBadgeStyle(item.pctChange).bg}`}>
+                                                <Feather name={getTrendBadgeStyle(item.pctChange).icon as any} size={10} color={getTrendBadgeStyle(item.pctChange).color} />
+                                                <Text className={`ml-1 text-[10px] font-bold leading-tight ${getTrendBadgeStyle(item.pctChange).text}`}>
+                                                    {formatPctBadge(item.pctChange)}
+                                                </Text>
+                                            </View>}
+                                        </View>
+                                        <Text className="text-[10px] font-bold text-[#9CA3AF] mt-0.5">{item.pctOfTotal}%</Text>
                                     </View>
                                 </View>
                                 {/* Custom Progress Line Underneath */}
