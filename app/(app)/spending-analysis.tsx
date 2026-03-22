@@ -108,7 +108,11 @@ export default function SpendingAnalysis() {
 
     return (
         <View className="flex-1 bg-[#F6F8F6] dark:bg-[#030712]">
-            <ScrollView contentContainerStyle={{ padding: 24, paddingTop: Platform.OS === 'web' ? 24 : 60, paddingBottom: 120 }}>
+            <ScrollView 
+                className="flex-1"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ padding: 24, paddingTop: Platform.OS === 'web' ? 24 : 60, paddingBottom: 120 }}
+            >
                 <View className="flex-row items-center pb-6">
                     <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm mr-4">
                         <Feather name="arrow-left" size={20} color={isDarkMode ? '#FFFFFF' : '#111827'} />

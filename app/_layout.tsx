@@ -9,7 +9,13 @@ import { useAppStore } from '../stores/useAppStore';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { bootApp } from '../lib/boot';
+import { registerWidgetTaskHandler } from 'react-native-android-widget';
+import { widgetTaskHandler } from '../widget';
 import '../global.css';
+
+if (Platform.OS === 'android') {
+  registerWidgetTaskHandler(widgetTaskHandler);
+}
 
 // Handle auth session completion for web early
 if (Platform.OS === 'web') {

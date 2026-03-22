@@ -2,6 +2,10 @@ import { View, Text, TouchableOpacity, SectionList, Platform, ScrollView, Modal 
 import { useRouter } from 'expo-router';
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { useAppStore, Transaction, Category } from '../../stores/useAppStore';
+import { requestWidgetUpdate } from 'react-native-android-widget';
+import { getWidgetData } from '../../widget';
+import { SmallWidget } from '../../widget/components/SmallWidget';
+import { MediumWidget } from '../../widget/components/MediumWidget';
 import { useMemo, useState } from 'react';
 import CategoryIcon from '../../components/CategoryIcon';
 import { softDeleteTransaction } from '../../lib/db';
@@ -109,6 +113,34 @@ export default function AllTransactionsScreen() {
                                 await apiDelete(`/api/transactions/${uuid}`);
                             } catch (e) {
                                 console.warn('Server delete failed, will sync later');
+                            }
+
+                            // Update widgets
+                            if (Platform.OS === 'android') {
+                                requestWidgetUpdate({
+                                    widgetName: 'SmallWidget',
+                                    renderWidget: async () => {
+                                        const data = await getWidgetData();
+                                        return <SmallWidget totalSpent={data.totalSpent} currencySymbol={data.currencySymbol} />;
+                                    }
+                                });
+                                requestWidgetUpdate({
+                                    widgetName: 'MediumWidget',
+                                    renderWidget: async () => {
+                                        const data = await getWidgetData();
+                                        return (
+                                            <MediumWidget
+                                                totalSpent={data.totalSpent}
+                                                spendPctChange={data.spendPctChange}
+                                                totalInvested={data.totalInvested}
+                                                investPctChange={data.investPctChange}
+                                                categories={data.categoryStats}
+                                                lastUpdated={data.lastUpdated}
+                                                currencySymbol={data.currencySymbol}
+                                            />
+                                        );
+                                    }
+                                });
                             }
                         } catch (e: any) {
                             Alert.alert('Error', e.message);

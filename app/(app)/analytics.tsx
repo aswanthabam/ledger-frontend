@@ -275,7 +275,11 @@ export default function Analytics() {
 
     return (
         <View className="flex-1 bg-[#F6F8F6] dark:bg-[#030712]">
-            <ScrollView contentContainerStyle={{ padding: 24, paddingTop: Platform.OS === 'web' ? 24 : 60, paddingBottom: 120 }}>
+            <ScrollView 
+                className="flex-1"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ padding: 24, paddingTop: Platform.OS === 'web' ? 24 : 60, paddingBottom: 120 }}
+            >
                 <View className="flex-row items-center justify-between pb-4">
                     <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm">
                         <Feather name="arrow-left" size={20} color={isDarkMode ? '#FFFFFF' : '#111827'} />
@@ -337,17 +341,17 @@ export default function Analytics() {
                                 maxValue={maxValue * 1.25}
                                 curved
                                 curvature={0.2}
-                                isAnimated
+                                isAnimated={Platform.OS !== 'web'}
                                 initialSpacing={10}
                                 endSpacing={10}
-                                focusEnabled
-                                showTextOnFocus
+                                focusEnabled={Platform.OS !== 'web'}
+                                showTextOnFocus={Platform.OS !== 'web'}
                                 adjustToWidth
                                 overflowTop={20}
                                 overflowBottom={10}
                                 textFontSize={10}
                                 textColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                                pointerConfig={{
+                                pointerConfig={Platform.OS === 'web' ? undefined : {
                                     pointerStripHeight: 150,
                                     pointerStripColor: isDarkMode ? '#4B5563' : '#E5E7EB',
                                     pointerStripWidth: 2,

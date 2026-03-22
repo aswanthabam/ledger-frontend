@@ -3,6 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { useAppStore, Category, Transaction } from '../../stores/useAppStore';
+import { requestWidgetUpdate } from 'react-native-android-widget';
+import { getWidgetData } from '../../widget';
+import { SmallWidget } from '../../widget/components/SmallWidget';
+import { MediumWidget } from '../../widget/components/MediumWidget';
 import { generateUUID, insertTransaction, updateTransaction } from '../../lib/db';
 import { apiPost, apiPatch } from '../../lib/api';
 import { loadDataIntoStore } from '../../lib/sync';
@@ -117,6 +121,34 @@ export default function AddTransactionScreen() {
             } catch (e) {
                 // Will be synced later
                 console.warn('Server push failed, will sync later:', e);
+            }
+
+            // Update widgets
+            if (Platform.OS === 'android') {
+                requestWidgetUpdate({
+                    widgetName: 'SmallWidget',
+                    renderWidget: async () => {
+                        const data = await getWidgetData();
+                        return <SmallWidget totalSpent={data.totalSpent} currencySymbol={data.currencySymbol} />;
+                    }
+                });
+                requestWidgetUpdate({
+                    widgetName: 'MediumWidget',
+                    renderWidget: async () => {
+                        const data = await getWidgetData();
+                        return (
+                            <MediumWidget
+                                totalSpent={data.totalSpent}
+                                spendPctChange={data.spendPctChange}
+                                totalInvested={data.totalInvested}
+                                investPctChange={data.investPctChange}
+                                categories={data.categoryStats}
+                                lastUpdated={data.lastUpdated}
+                                currencySymbol={data.currencySymbol}
+                            />
+                        );
+                    }
+                });
             }
 
             router.back();

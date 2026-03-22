@@ -7,6 +7,10 @@ import { generateUUID, insertCategory, softDeleteCategory, updateCategory } from
 import { apiPost, apiPatch } from '../../lib/api';
 import { loadDataIntoStore } from '../../lib/sync';
 import { QUICK_PICK_ICONS } from '../../lib/icons';
+import { requestWidgetUpdate } from 'react-native-android-widget';
+import { getWidgetData } from '../../widget';
+import { SmallWidget } from '../../widget/components/SmallWidget';
+import { MediumWidget } from '../../widget/components/MediumWidget';
 
 const COLORS = [
     { bgLight: '#D1FAE5', bgDark: '#064E3B', fgLight: '#059669', fgDark: '#34D399', value: 'green' },
@@ -104,6 +108,34 @@ export default function AddCategoryScreen() {
                 }
             } catch (e) {
                 console.warn('Server push failed, will sync later:', e);
+            }
+
+            // Update widgets
+            if (Platform.OS === 'android') {
+                requestWidgetUpdate({
+                    widgetName: 'SmallWidget',
+                    renderWidget: async () => {
+                        const data = await getWidgetData();
+                        return <SmallWidget totalSpent={data.totalSpent} currencySymbol={data.currencySymbol} />;
+                    }
+                });
+                requestWidgetUpdate({
+                    widgetName: 'MediumWidget',
+                    renderWidget: async () => {
+                        const data = await getWidgetData();
+                        return (
+                            <MediumWidget
+                                totalSpent={data.totalSpent}
+                                spendPctChange={data.spendPctChange}
+                                totalInvested={data.totalInvested}
+                                investPctChange={data.investPctChange}
+                                categories={data.categoryStats}
+                                lastUpdated={data.lastUpdated}
+                                currencySymbol={data.currencySymbol}
+                            />
+                        );
+                    }
+                });
             }
 
             router.back();

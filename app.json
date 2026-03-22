@@ -40,7 +40,34 @@
       "./plugins/withWidgets.js",
       "expo-web-browser",
       "expo-font",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "SmallWidget",
+              "label": "Ledger Small",
+              "description": "Total spending for current month",
+              "minWidth": "100dp",
+              "minHeight": "80dp",
+              "targetWidth": "100dp",
+              "targetHeight": "80dp",
+              "updatePeriodMillis": 3600000
+            },
+            {
+              "name": "MediumWidget",
+              "label": "Ledger Detailed",
+              "description": "Detailed spending and investments",
+              "minWidth": "200dp",
+              "minHeight": "100dp",
+              "targetWidth": "200dp",
+              "targetHeight": "100dp",
+              "updatePeriodMillis": 3600000
+            }
+          ]
+        }
+      ]
     ]
   }
 }
