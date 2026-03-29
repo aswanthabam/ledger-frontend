@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name">ledger-frontend</string>
+  <string name="app_name">Ledger</string>
   <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
   <string name="widget_smallwidget_description" translatable="false">Total spending for current month</string>
   <string name="widget_mediumwidget_description" translatable="false">Detailed spending and investments</string>

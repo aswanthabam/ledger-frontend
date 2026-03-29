@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ledger-frontend",
+    "name": "Ledger",
     "slug": "ledger-frontend",
     "scheme": [
       "com.ledger.app",
