@@ -22,7 +22,15 @@ async function handleResponse(res: Response) {
     }
     if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
+        const errorMessage = body.error || `HTTP ${res.status}`;
+        
+        // Log unexpected API errors (ignore 404s for common existence checks if necessary, 
+        // but generally useful to log non-OK responses)
+        import('./logger').then(({ logger }) => {
+            logger.error(`API Error: ${res.url} (${res.status})`, errorMessage);
+        });
+
+        throw new Error(errorMessage);
     }
     return res.json();
 }

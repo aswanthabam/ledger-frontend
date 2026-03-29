@@ -12,6 +12,7 @@ import { softDeleteTransaction } from '../../lib/db';
 import { apiDelete } from '../../lib/api';
 import { loadDataIntoStore } from '../../lib/sync';
 import { Alert } from 'react-native';
+import { logger } from '../../lib/logger';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 type TimeRange = 'This Month' | 'Previous Month' | 'Last 6 Months' | 'Custom';
@@ -145,7 +146,8 @@ export default function AllTransactionsScreen() {
                                 ]);
                             }
                         } catch (e: any) {
-                            Alert.alert('Error', e.message);
+                            logger.error('Failed to delete transaction', e);
+                            Alert.alert('Error', 'Something went wrong. Please try again.');
                         }
                     }
                 }

@@ -1,16 +1,16 @@
+import React, { Component, ErrorInfo, ReactNode, useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, Text, TextInput } from 'react-native';
+import { View, ActivityIndicator, Text, TextInput, TouchableOpacity, Platform } from 'react-native';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_900Black } from '@expo-google-fonts/inter';
 import { initDB } from '../lib/db';
 import { useColorScheme } from 'nativewind';
 import { useAppStore } from '../stores/useAppStore';
 import * as WebBrowser from 'expo-web-browser';
-import { Platform } from 'react-native';
 import { bootApp } from '../lib/boot';
 import { registerWidgetTaskHandler } from 'react-native-android-widget';
 import { widgetTaskHandler } from '../widget';
+import { logger } from '../lib/logger';
 import '../global.css';
 
 if (Platform.OS === 'android') {
@@ -32,6 +32,60 @@ interface TextWithDefaultProps extends React.FC<any> {
 ((TextInput as unknown) as TextWithDefaultProps).defaultProps = ((TextInput as unknown) as TextWithDefaultProps).defaultProps || {};
 ((TextInput as unknown) as TextWithDefaultProps).defaultProps!.style = { fontFamily: 'Inter_400Regular' };
 
+// Global error boundary for React errors
+class ErrorBoundary extends Component<{ children: ReactNode; onRetry: () => void }, { hasError: boolean }> {
+    constructor(props: { children: ReactNode; onRetry: () => void }) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+        logger.error('React ErrorBoundary Caught Error', error, { componentStack: errorInfo.componentStack });
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <View className="flex-1 items-center justify-center bg-white p-6 dark:bg-gray-950">
+                    <Text className="text-4xl">⚠️</Text>
+                    <Text className="mt-4 text-center text-xl font-bold text-gray-900 dark:text-white">Something went wrong</Text>
+                    <Text className="mt-2 text-center text-gray-500 dark:text-gray-400">
+                        An unexpected error occurred. Please try restarting the app.
+                    </Text>
+                    <TouchableOpacity 
+                        className="mt-8 rounded-full bg-green-600 px-8 py-3"
+                        onPress={() => {
+                            if (Platform.OS === 'web') {
+                                window.location.reload();
+                            } else {
+                                this.setState({ hasError: false }, () => this.props.onRetry());
+                            }
+                        }} 
+                    >
+                        <Text className="font-bold text-white">Retry</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+// Catch general JS errors
+if (!__DEV__) {
+    const defaultHandler = ErrorUtils.getGlobalHandler();
+    ErrorUtils.setGlobalHandler((error, isFatal) => {
+        logger.error(`Global JS Error (Fatal: ${isFatal})`, error);
+        if (defaultHandler) {
+            defaultHandler(error, isFatal);
+        }
+    });
+}
+
 export default function RootLayout() {
     const [dbReady, setDbReady] = useState(false);
     const { isDarkMode } = useAppStore();
@@ -52,6 +106,11 @@ export default function RootLayout() {
 
     useEffect(() => {
         async function setup() {
+            // Force re-init if retry was pressed
+            if (dbReady === false && !__DEV__) {
+                 // allow restart logic if needed, but usually full reload is better
+            }
+            
             // On web, skip DB init if we are in an auth redirect tab
             if (Platform.OS === 'web') {
                 const search = window.location.search;
@@ -73,11 +132,13 @@ export default function RootLayout() {
                 await bootApp();
                 setDbReady(true);
             } catch (e) {
+                logger.error('Boot/Init DB Failure', e);
                 console.error('Failed to init DB or boot app', e);
+                // We don't setDbReady true here, so it stays loading or boundary catches
             }
         }
         setup();
-    }, []);
+    }, [dbReady]);
 
     if (!dbReady || !fontsLoaded) {
         return (
@@ -88,7 +149,7 @@ export default function RootLayout() {
     }
 
     return (
-        <>
+        <ErrorBoundary onRetry={() => setDbReady(false)}>
             <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(app)" />
                 <Stack.Screen name="index" />
@@ -103,6 +164,6 @@ export default function RootLayout() {
                 <Stack.Screen name="transactions/all" />
             </Stack>
             <StatusBar style="auto" />
-        </>
+        </ErrorBoundary>
     );
 }

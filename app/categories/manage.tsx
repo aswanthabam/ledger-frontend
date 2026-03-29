@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, TextInput, ScrollView, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { logger } from '../../lib/logger';
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { useAppStore, Category } from '../../stores/useAppStore';
 import { softDeleteCategory } from '../../lib/db';
@@ -41,7 +42,8 @@ export default function ManageCategoriesScreen() {
                             try { await apiDelete(`/api/categories/${uuid}`); }
                             catch (e) { console.warn('Server delete will sync later'); }
                         } catch (e: any) {
-                            Alert.alert('Error', e.message);
+                            logger.error('Failed to delete category', e);
+                            Alert.alert('Error', 'Something went wrong. Please try again.');
                         }
                     }
                 }

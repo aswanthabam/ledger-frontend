@@ -1,18 +1,31 @@
 import * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
+import { logger } from './logger';
+
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+
+/**
+ * Higher-order function to wrap DB operations with automatic remote error logging.
+ */
+async function withErrorLogging<T>(operationName: string, fn: () => Promise<T>): Promise<T> {
+    try {
+        return await fn();
+    } catch (e) {
+        logger.error(`Database Error: ${operationName}`, e);
+        throw e;
+    }
+}
 
 // Setup SQLite Instance
 export const getDB = async () => {
-    if (!dbPromise) {
-        dbPromise = SQLite.openDatabaseAsync('ledger.db');
-    }
+    dbPromise = SQLite.openDatabaseAsync('ledger.db');
     return dbPromise;
 };
 
 export const initDB = async () => {
-    const db = await getDB();
-    await db.execAsync(`
+    return withErrorLogging('initDB', async () => {
+        const db = await getDB();
+        await db.execAsync(`
       PRAGMA journal_mode = WAL;
       
       CREATE TABLE IF NOT EXISTS categories (
@@ -48,38 +61,29 @@ export const initDB = async () => {
         FOREIGN KEY (categoryUuid) REFERENCES categories(uuid)
       );
     `);
-    
-    // Migration: Categories
-    try {
-        const catInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(categories)`);
+
         const now = Date.now();
-        
+
+        // Migration: Categories
+        const catInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(categories)`);
         if (!catInfo.find(col => col.name === 'createdAt')) {
             await db.execAsync(`ALTER TABLE categories ADD COLUMN createdAt INTEGER DEFAULT ${now}`);
         }
         if (!catInfo.find(col => col.name === 'updatedAt')) {
             await db.execAsync(`ALTER TABLE categories ADD COLUMN updatedAt INTEGER DEFAULT ${now}`);
         }
-    } catch (e) {
-        console.warn('Categories migration error:', e);
-    }
 
-    // Migration: Transactions
-    try {
+        // Migration: Transactions
         const txnInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(transactions)`);
-        const now = Date.now();
-
         if (!txnInfo.find(col => col.name === 'createdAt')) {
             await db.execAsync(`ALTER TABLE transactions ADD COLUMN createdAt INTEGER DEFAULT ${now}`);
         }
         if (!txnInfo.find(col => col.name === 'updatedAt')) {
             await db.execAsync(`ALTER TABLE transactions ADD COLUMN updatedAt INTEGER DEFAULT ${now}`);
         }
-    } catch (e) {
-        console.warn('Transactions migration error:', e);
-    }
 
-    console.log("Database initialized");
+        console.log("Database initialized");
+    });
 };
 
 // Generate V4 UUID
@@ -90,14 +94,16 @@ export const generateUUID = () => {
 // ─── Category Helpers ───────────────────────────────────────────────
 
 export async function getCategories(type?: 'expense' | 'asset') {
-    const db = await getDB();
-    if (type) {
-        return db.getAllAsync(
-            `SELECT * FROM categories WHERE isDeleted = 0 AND type = ? ORDER BY createdAt ASC, name ASC`,
-            [type]
-        );
-    }
-    return db.getAllAsync(`SELECT * FROM categories WHERE isDeleted = 0 ORDER BY createdAt ASC, name ASC`);
+    return withErrorLogging('getCategories', async () => {
+        const db = await getDB();
+        if (type) {
+            return db.getAllAsync(
+                `SELECT * FROM categories WHERE isDeleted = 0 AND type = ? ORDER BY createdAt ASC, name ASC`,
+                [type]
+            );
+        }
+        return db.getAllAsync(`SELECT * FROM categories WHERE isDeleted = 0 ORDER BY createdAt ASC, name ASC`);
+    });
 }
 
 export async function insertCategory(cat: {
@@ -105,17 +111,19 @@ export async function insertCategory(cat: {
     themeBgLight: string; themeBgDark: string; themeFgLight: string; themeFgDark: string;
     createdAt?: number;
 }) {
-    const db = await getDB();
-    const now = Date.now();
-    const createdAt = cat.createdAt || now;
-    const updatedAt = now;
-    const params = [
-        cat.uuid, cat.name, cat.type, cat.icon, cat.iconType,
-        cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark,
-        createdAt, updatedAt
-    ].map(val => val === undefined ? null : val);
-    await db.runAsync(`INSERT INTO categories (uuid, name, type, icon, iconType, themeBgLight, themeBgDark, themeFgLight, themeFgDark, isSynced, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`, params);
+    return withErrorLogging('insertCategory', async () => {
+        const db = await getDB();
+        const now = Date.now();
+        const createdAt = cat.createdAt || now;
+        const updatedAt = now;
+        const params = [
+            cat.uuid, cat.name, cat.type, cat.icon, cat.iconType,
+            cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark,
+            createdAt, updatedAt
+        ].map(val => val === undefined ? null : val);
+        await db.runAsync(`INSERT INTO categories (uuid, name, type, icon, iconType, themeBgLight, themeBgDark, themeFgLight, themeFgDark, isSynced, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`, params);
+    });
 }
 
 export async function bulkInsertCategories(categories: {
@@ -123,125 +131,143 @@ export async function bulkInsertCategories(categories: {
     themeBgLight: string; themeBgDark: string; themeFgLight: string; themeFgDark: string;
     createdAt?: number;
 }[]) {
-    const db = await getDB();
-    await db.withTransactionAsync(async () => {
-        let now = Date.now();
-        for (const cat of categories) {
-            // Increment timestamp slightly to ensure order if created in a loop
-            const timestamp = cat.createdAt || now++;
-            const updatedAt = timestamp;
-            const params = [
-                cat.uuid, cat.name, cat.type, cat.icon, cat.iconType,
-                cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark,
-                timestamp, updatedAt
-            ].map(val => val === undefined ? null : val);
-            await db.runAsync(`INSERT INTO categories (uuid, name, type, icon, iconType, themeBgLight, themeBgDark, themeFgLight, themeFgDark, isSynced, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`, params);
-        }
+    return withErrorLogging('bulkInsertCategories', async () => {
+        const db = await getDB();
+        await db.withTransactionAsync(async () => {
+            let now = Date.now();
+            for (const cat of categories) {
+                now = now + 100;
+                const timestamp = cat.createdAt || now++;
+                const updatedAt = timestamp;
+                const params = [
+                    cat.uuid, cat.name, cat.type, cat.icon, cat.iconType,
+                    cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark,
+                    timestamp, updatedAt
+                ].map(val => val === undefined ? null : val);
+                await db.runAsync(`INSERT INTO categories (uuid, name, type, icon, iconType, themeBgLight, themeBgDark, themeFgLight, themeFgDark, isSynced, createdAt, updatedAt)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`, params);
+            }
+        });
     });
 }
 
 export async function softDeleteCategory(uuid: string) {
-    const db = await getDB();
-    await db.runAsync(
-        `UPDATE categories SET isDeleted = 1, isSynced = 0 WHERE uuid = ?`,
-        [uuid]
-    );
+    return withErrorLogging('softDeleteCategory', async () => {
+        const db = await getDB();
+        await db.runAsync(
+            `UPDATE categories SET isDeleted = 1, isSynced = 0 WHERE uuid = ?`,
+            [uuid]
+        );
+    });
 }
 
 export async function updateCategory(cat: {
     uuid: string; name: string; type: string; icon: string; iconType: string;
     themeBgLight: string; themeBgDark: string; themeFgLight: string; themeFgDark: string;
 }) {
-    const db = await getDB();
-    const updatedAt = Date.now();
-    const params = [
-        cat.name, cat.type, cat.icon, cat.iconType,
-        cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark,
-        updatedAt, cat.uuid
-    ].map(val => val === undefined ? null : val);
-    await db.runAsync(
-        `UPDATE categories 
-         SET name = ?, type = ?, icon = ?, iconType = ?, 
-             themeBgLight = ?, themeBgDark = ?, themeFgLight = ?, themeFgDark = ?,
-             isSynced = 0, updatedAt = ?
-         WHERE uuid = ?`,
-        params
-    );
+    return withErrorLogging('updateCategory', async () => {
+        const db = await getDB();
+        const updatedAt = Date.now();
+        const params = [
+            cat.name, cat.type, cat.icon, cat.iconType,
+            cat.themeBgLight, cat.themeBgDark, cat.themeFgLight, cat.themeFgDark,
+            updatedAt, cat.uuid
+        ].map(val => val === undefined ? null : val);
+        await db.runAsync(
+            `UPDATE categories 
+             SET name = ?, type = ?, icon = ?, iconType = ?, 
+                 themeBgLight = ?, themeBgDark = ?, themeFgLight = ?, themeFgDark = ?,
+                 isSynced = 0, updatedAt = ?
+             WHERE uuid = ?`,
+            params
+        );
+    });
 }
 
 // ─── Transaction Helpers ────────────────────────────────────────────
 
 export async function getTransactions(month?: Date) {
-    const db = await getDB();
-    if (month) {
-        const year = month.getFullYear();
-        const m = String(month.getMonth() + 1).padStart(2, '0');
-        const startDate = `${year}-${m}-01`;
-        const endMonth = month.getMonth() + 2 > 12 ? 1 : month.getMonth() + 2;
-        const endYear = endMonth === 1 ? year + 1 : year;
-        const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
+    return withErrorLogging('getTransactions', async () => {
+        const db = await getDB();
+        if (month) {
+            const year = month.getFullYear();
+            const m = String(month.getMonth() + 1).padStart(2, '0');
+            const startDate = `${year}-${m}-01`;
+            const endMonth = month.getMonth() + 2 > 12 ? 1 : month.getMonth() + 2;
+            const endYear = endMonth === 1 ? year + 1 : year;
+            const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
+            return db.getAllAsync(
+                `SELECT * FROM transactions WHERE isDeleted = 0
+                 AND transactionDate >= ? AND transactionDate < ?
+                 ORDER BY transactionDate DESC`,
+                [startDate, endDate]
+            );
+        }
         return db.getAllAsync(
-            `SELECT * FROM transactions WHERE isDeleted = 0
-             AND transactionDate >= ? AND transactionDate < ?
-             ORDER BY transactionDate DESC`,
-            [startDate, endDate]
+            `SELECT * FROM transactions WHERE isDeleted = 0 ORDER BY transactionDate DESC`
         );
-    }
-    return db.getAllAsync(
-        `SELECT * FROM transactions WHERE isDeleted = 0 ORDER BY transactionDate DESC`
-    );
+    });
 }
 
 export async function insertTransaction(txn: {
     uuid: string; categoryUuid: string; type: string; amount: number;
     transactionDate: string; note: string;
 }) {
-    const db = await getDB();
-    const now = Date.now();
-    await db.runAsync(
-        `INSERT INTO transactions (uuid, categoryUuid, type, amount, transactionDate, note, isSynced, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-        [txn.uuid, txn.categoryUuid, txn.type, txn.amount, txn.transactionDate, txn.note, now, now]
-    );
+    return withErrorLogging('insertTransaction', async () => {
+        const db = await getDB();
+        const now = Date.now();
+        await db.runAsync(
+            `INSERT INTO transactions (uuid, categoryUuid, type, amount, transactionDate, note, isSynced, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+            [txn.uuid, txn.categoryUuid, txn.type, txn.amount, txn.transactionDate, txn.note, now, now]
+        );
+    });
 }
 
 export async function updateTransaction(txn: {
     uuid: string; categoryUuid: string; type: string; amount: number;
     transactionDate: string; note: string;
 }) {
-    const db = await getDB();
-    const now = Date.now();
-    await db.runAsync(
-        `UPDATE transactions 
-         SET categoryUuid = ?, type = ?, amount = ?, transactionDate = ?, note = ?, isSynced = 0, updatedAt = ?
-         WHERE uuid = ?`,
-        [txn.categoryUuid, txn.type, txn.amount, txn.transactionDate, txn.note, now, txn.uuid]
-    );
+    return withErrorLogging('updateTransaction', async () => {
+        const db = await getDB();
+        const now = Date.now();
+        await db.runAsync(
+            `UPDATE transactions 
+             SET categoryUuid = ?, type = ?, amount = ?, transactionDate = ?, note = ?, isSynced = 0, updatedAt = ?
+             WHERE uuid = ?`,
+            [txn.categoryUuid, txn.type, txn.amount, txn.transactionDate, txn.note, now, txn.uuid]
+        );
+    });
 }
 
 export async function softDeleteTransaction(uuid: string) {
-    const db = await getDB();
-    await db.runAsync(
-        `UPDATE transactions SET isDeleted = 1, isSynced = 0 WHERE uuid = ?`,
-        [uuid]
-    );
+    return withErrorLogging('softDeleteTransaction', async () => {
+        const db = await getDB();
+        await db.runAsync(
+            `UPDATE transactions SET isDeleted = 1, isSynced = 0 WHERE uuid = ?`,
+            [uuid]
+        );
+    });
 }
 
 // ─── Sync & Reset Helpers ───────────────────────────────────────────
 
 export async function hasUnsyncedData(): Promise<boolean> {
-    const db = await getDB();
-    const categories = await db.getAllAsync('SELECT uuid FROM categories WHERE isSynced = 0');
-    const transactions = await db.getAllAsync('SELECT uuid FROM transactions WHERE isSynced = 0');
-    return categories.length > 0 || transactions.length > 0;
+    return withErrorLogging('hasUnsyncedData', async () => {
+        const db = await getDB();
+        const categories = await db.getAllAsync('SELECT uuid FROM categories WHERE isSynced = 0');
+        const transactions = await db.getAllAsync('SELECT uuid FROM transactions WHERE isSynced = 0');
+        return categories.length > 0 || transactions.length > 0;
+    });
 }
 
 export async function resetDB() {
-    const db = await getDB();
-    await db.execAsync(`
-        DELETE FROM transactions;
-        DELETE FROM categories;
-    `);
-    console.log("Database reset");
+    return withErrorLogging('resetDB', async () => {
+        const db = await getDB();
+        await db.execAsync(`
+            DELETE FROM transactions;
+            DELETE FROM categories;
+        `);
+        console.log("Database reset");
+    });
 }

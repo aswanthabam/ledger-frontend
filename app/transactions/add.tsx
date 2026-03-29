@@ -12,6 +12,7 @@ import { apiPost, apiPatch } from '../../lib/api';
 import { loadDataIntoStore } from '../../lib/sync';
 import CategoryIcon from '../../components/CategoryIcon';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { logger } from '../../lib/logger';
 
 export default function AddTransactionScreen() {
     const router = useRouter();
@@ -160,7 +161,8 @@ export default function AddTransactionScreen() {
                 router.back();
             }
         } catch (e: any) {
-            Alert.alert('Error', e.message || 'Failed to save transaction.');
+            logger.error('Failed to save transaction', e);
+            Alert.alert('Error', 'Something went wrong. Please try again.');
         } finally {
             setSubmitting(false);
         }

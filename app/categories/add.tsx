@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { logger } from '../../lib/logger';
 import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../stores/useAppStore';
 import { generateUUID, insertCategory, softDeleteCategory, updateCategory } from '../../lib/db';
@@ -140,8 +141,8 @@ export default function AddCategoryScreen() {
 
             router.back();
         } catch (e: any) {
-            console.error('Failed to save category:', e);
-            Alert.alert('Error', e.message || 'Failed to save category.');
+            logger.error('Failed to save category', e);
+            Alert.alert('Error', 'Something went wrong. Please try again.');
         } finally {
             setSubmitting(false);
         }
