@@ -43,12 +43,5 @@
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_smallwidget"/>
     </receiver>
-    <receiver android:name=".widget.MediumWidget" android:exported="false" android:label="Ledger Detailed">
-      <intent-filter>
-        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
-        <action android:name="com.ledger.app.WIDGET_CLICK"/>
-      </intent-filter>
-      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_mediumwidget"/>
-    </receiver>
   </application>
 </manifest>

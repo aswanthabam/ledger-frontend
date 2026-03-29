@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, ToastAndroid, BackHandler } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { useAppStore, Category, Transaction } from '../../stores/useAppStore';
@@ -15,7 +15,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 
 export default function AddTransactionScreen() {
     const router = useRouter();
-    const { editUuid } = useLocalSearchParams<{ editUuid?: string }>();
+    const { editUuid, fromWidget } = useLocalSearchParams<{ editUuid?: string; fromWidget?: string }>();
     const isDarkMode = useAppStore((state) => state.isDarkMode);
     const currencySymbol = useAppStore((state) => state.currencySymbol);
     const transactions = useAppStore((state) => state.transactions);
@@ -151,7 +151,12 @@ export default function AddTransactionScreen() {
                 });
             }
 
-            router.back();
+            if (fromWidget === 'true' && Platform.OS === 'android') {
+                ToastAndroid.show('Transaction added successfully', ToastAndroid.SHORT);
+                setTimeout(() => BackHandler.exitApp(), 500); // Give toast a brief moment
+            } else {
+                router.back();
+            }
         } catch (e: any) {
             Alert.alert('Error', e.message || 'Failed to save transaction.');
         } finally {

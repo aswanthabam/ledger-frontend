@@ -96,7 +96,7 @@ export function SmallWidget({ totalSpent, currencySymbol }: SmallWidgetProps) {
             alignItems: 'center',
           }}
           clickAction="OPEN_URI"
-          clickActionData={{ uri: 'com.ledger.app://transactions/add' }}
+          clickActionData={{ uri: 'com.ledger.app://transactions/add?fromWidget=true' }}
         >
           <TextWidget
             text="+"

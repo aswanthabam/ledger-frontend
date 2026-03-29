@@ -3,7 +3,6 @@ import { requestWidgetUpdate, WidgetTaskHandlerProps, WidgetInfo } from 'react-n
 import * as SQLite from 'expo-sqlite';
 import * as SecureStore from 'expo-secure-store';
 import { SmallWidget } from './components/SmallWidget';
-import { MediumWidget } from './components/MediumWidget';
 
 export async function getWidgetData() {
   let db: SQLite.SQLiteDatabase | null = null;
@@ -111,17 +110,5 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
 
   if (widgetName === 'SmallWidget') {
     renderWidget(<SmallWidget totalSpent={data.totalSpent} currencySymbol={data.currencySymbol} />);
-  } else {
-    renderWidget(
-      <MediumWidget
-        totalSpent={data.totalSpent}
-        spendPctChange={data.spendPctChange}
-        totalInvested={data.totalInvested}
-        investPctChange={data.investPctChange}
-        categories={data.categoryStats}
-        lastUpdated={data.lastUpdated}
-        currencySymbol={data.currencySymbol}
-      />
-    );
   }
 }
