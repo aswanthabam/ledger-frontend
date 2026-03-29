@@ -31,14 +31,16 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# Google Services config
+GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo
 
 # generated native folders
-# /ios
-# /android
 
 android/.gradle
 android/local.properties

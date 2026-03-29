@@ -125,30 +125,32 @@ export default function AddTransactionScreen() {
 
             // Update widgets
             if (Platform.OS === 'android') {
-                requestWidgetUpdate({
-                    widgetName: 'SmallWidget',
-                    renderWidget: async () => {
-                        const data = await getWidgetData();
-                        return <SmallWidget totalSpent={data.totalSpent} currencySymbol={data.currencySymbol} />;
-                    }
-                });
-                requestWidgetUpdate({
-                    widgetName: 'MediumWidget',
-                    renderWidget: async () => {
-                        const data = await getWidgetData();
-                        return (
-                            <MediumWidget
-                                totalSpent={data.totalSpent}
-                                spendPctChange={data.spendPctChange}
-                                totalInvested={data.totalInvested}
-                                investPctChange={data.investPctChange}
-                                categories={data.categoryStats}
-                                lastUpdated={data.lastUpdated}
-                                currencySymbol={data.currencySymbol}
-                            />
-                        );
-                    }
-                });
+                await Promise.all([
+                    requestWidgetUpdate({
+                        widgetName: 'SmallWidget',
+                        renderWidget: async () => {
+                            const data = await getWidgetData();
+                            return <SmallWidget totalSpent={data.totalSpent} currencySymbol={data.currencySymbol} />;
+                        }
+                    }),
+                    requestWidgetUpdate({
+                        widgetName: 'MediumWidget',
+                        renderWidget: async () => {
+                            const data = await getWidgetData();
+                            return (
+                                <MediumWidget
+                                    totalSpent={data.totalSpent}
+                                    spendPctChange={data.spendPctChange}
+                                    totalInvested={data.totalInvested}
+                                    investPctChange={data.investPctChange}
+                                    categories={data.categoryStats}
+                                    lastUpdated={data.lastUpdated}
+                                    currencySymbol={data.currencySymbol}
+                                />
+                            );
+                        }
+                    })
+                ]);
             }
 
             if (fromWidget === 'true' && Platform.OS === 'android') {
