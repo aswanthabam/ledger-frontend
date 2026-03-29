@@ -16,9 +16,10 @@ async function withErrorLogging<T>(operationName: string, fn: () => Promise<T>):
     }
 }
 
-// Setup SQLite Instance
 export const getDB = async () => {
-    dbPromise = SQLite.openDatabaseAsync('ledger.db');
+    if (!dbPromise) {
+        dbPromise = SQLite.openDatabaseAsync('ledger.db');
+    }
     return dbPromise;
 };
 
