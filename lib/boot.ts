@@ -2,6 +2,7 @@ import * as SecureStore from './secure-store';
 import { useAppStore } from '../stores/useAppStore';
 import { Appearance, Platform } from 'react-native';
 import { runSync, loadDataIntoStore } from './sync';
+import { logger } from './logger';
 
 /**
  * bootApp performs all essential startup logic:
@@ -24,14 +25,14 @@ export async function bootApp() {
             store.setDarkMode(systemTheme === 'dark');
         }
     } catch (e) {
-        console.warn('Failed to load theme:', e);
+        logger.warn('Failed to load theme', { error: e });
     }
 
     // 2. Load basic local state regardless of auth (e.g. for local browsing if possible or just to have it ready)
     try {
         await loadDataIntoStore();
     } catch (e) {
-        console.warn('Initial data load failed:', e);
+        logger.warn('Initial data load failed', { error: e });
     }
 
     // 3. Restore User Info if token exists
@@ -56,14 +57,14 @@ export async function bootApp() {
             // The Splash screen will manually call runSync if it needs to wait.
             runSync().catch(e => {
                 if (e.message === 'UNAUTHORIZED') {
-                    console.warn('Session expired during boot sync');
+                    logger.warn('Session expired during boot sync');
                     // We don't redirect here, the screen should handle it or let splash handle it
                 } else {
-                    console.warn('Background boot sync failed:', e.message);
+                    logger.warn('Background boot sync failed', { error: e.message });
                 }
             });
         } catch (e) {
-            console.error('Failed to restore user session:', e);
+            logger.error('Failed to restore user session', e);
         }
     }
 }

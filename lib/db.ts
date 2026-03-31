@@ -3,6 +3,7 @@ import * as Crypto from 'expo-crypto';
 import { logger } from './logger';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+let initPromise: Promise<void> | null = null;
 
 /**
  * Higher-order function to wrap DB operations with automatic remote error logging.
@@ -24,7 +25,9 @@ export const getDB = async () => {
 };
 
 export const initDB = async () => {
-    return withErrorLogging('initDB', async () => {
+    if (initPromise) return initPromise;
+
+    initPromise = withErrorLogging('initDB', async () => {
         const db = await getDB();
         await db.execAsync(`
       PRAGMA journal_mode = WAL;

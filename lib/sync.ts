@@ -3,6 +3,7 @@ import { apiGet, apiPost, apiPatch } from './api';
 import { useAppStore } from '../stores/useAppStore';
 import * as SecureStore from './secure-store';
 import { getCurrencySymbol } from './currencies';
+import { logger } from './logger';
 
 // ─── Pull: Server → Local DB ───────────────────────────────────────
 export async function syncPull() {
@@ -78,8 +79,7 @@ export async function syncPull() {
         }
     } catch (e: any) {
         if (e.message === 'UNAUTHORIZED') throw e;
-        console.warn('Sync pull failed (offline?):', e.message);
-        console.log(e);
+        logger.warn('Sync pull failed (offline?)', { error: e.message });
     }
 }
 
@@ -146,8 +146,7 @@ export async function syncPush() {
         }
     } catch (e: any) {
         if (e.message === 'UNAUTHORIZED') throw e;
-        console.warn('Sync push failed (offline?):', e.message);
-        console.log(e);
+        logger.warn('Sync push failed (offline?)', { error: e.message });
     }
 }
 
@@ -163,7 +162,7 @@ export async function runSync() {
         // Refresh in-memory state from DB
         await loadDataIntoStore();
     } catch (e: any) {
-        console.error('Sync error:', e.message);
+        logger.error('Sync error', e);
     } finally {
         store.setSyncing(false);
     }
@@ -240,7 +239,7 @@ export async function syncPreferences() {
         }
     } catch (e: any) {
         if (e.message === 'UNAUTHORIZED') throw e;
-        console.warn('Preference sync failed (offline?):', e.message);
+        logger.warn('Preference sync failed (offline?)', { error: e.message });
     }
 }
 

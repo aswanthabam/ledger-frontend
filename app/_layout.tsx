@@ -105,6 +105,8 @@ export default function RootLayout() {
     });
 
     useEffect(() => {
+        if (dbReady) return;
+
         async function setup() {
             // Force re-init if retry was pressed
             if (dbReady === false && !__DEV__) {
