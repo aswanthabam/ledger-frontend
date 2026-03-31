@@ -39,13 +39,13 @@ export async function getWidgetData() {
   let prevInvested = 0;
   let categoryStats: any[] = [];
 
-  if (db) {
+    if (db) {
     const currentTxns: any[] = await db.getAllAsync(
-      'SELECT * FROM transactions WHERE isDeleted = 0 AND transactionDate >= ? AND transactionDate < ?',
+      "SELECT * FROM transactions WHERE isDeleted = 0 AND date(transactionDate, 'localtime') >= ? AND date(transactionDate, 'localtime') < ?",
       [currentMonthStart, nextMonthStart]
     );
     const prevTxns: any[] = await db.getAllAsync(
-      'SELECT * FROM transactions WHERE isDeleted = 0 AND transactionDate >= ? AND transactionDate < ?',
+      "SELECT * FROM transactions WHERE isDeleted = 0 AND date(transactionDate, 'localtime') >= ? AND date(transactionDate, 'localtime') < ?",
       [prevMonthStart, currentMonthStart]
     );
 
