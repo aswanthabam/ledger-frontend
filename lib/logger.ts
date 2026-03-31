@@ -18,6 +18,9 @@ export interface LogPayload {
  * Fails silently to ensure app stability.
  */
 async function sendToIngest(payload: LogPayload) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
     try {
         var res = await fetch(`https://logs-api.avctech.in/api/ingest`, {
             method: 'POST',
@@ -26,12 +29,15 @@ async function sendToIngest(payload: LogPayload) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(payload),
+            signal: controller.signal,
         });
+        clearTimeout(timeout);
         const result = await res.json().catch(() => ({}));
         if (__DEV__) {
             console.log('[Remote Log Response]:', result);
         }
     } catch (e) {
+        clearTimeout(timeout);
         // Silent catch: logging failure should not affect app
         if (__DEV__) {
             console.error('Failed to send log to ingest API:', e);
