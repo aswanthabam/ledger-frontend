@@ -1,13 +1,37 @@
 import * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
-let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+let _dbInstance: SQLite.SQLiteDatabase | null = null;
 
 // Setup SQLite Instance
 export const getDB = async () => {
-    if (!dbPromise) {
-        dbPromise = SQLite.openDatabaseAsync('ledger.db');
+    if (_dbInstance) {
+        try {
+            // Use a timeout or a very simple check
+            await _dbInstance.execAsync('PRAGMA user_version;');
+            return _dbInstance;
+        } catch (e) {
+            console.log("Pointer dead, cleaning up without closing...");
+            // DO NOT call closeAsync here, it likely triggers another NPE
+            _dbInstance = null;
+        }
     }
-    return dbPromise;
+
+    if (!_dbInstance) {
+        console.log("Opening fresh connection...");
+        _dbInstance = await SQLite.openDatabaseAsync('ledger.db', {
+            useNewConnection: true
+        });
+
+        // Final sanity check on the NEW connection
+        try {
+            await _dbInstance.execAsync('PRAGMA journal_mode = WAL;');
+        } catch (e) {
+            _dbInstance = null;
+            throw new Error("Failed to initialize new connection");
+        }
+    }
+
+    return _dbInstance;
 };
 
 export const initDB = async () => {
@@ -48,12 +72,12 @@ export const initDB = async () => {
         FOREIGN KEY (categoryUuid) REFERENCES categories(uuid)
       );
     `);
-    
+
     // Migration: Categories
     try {
         const catInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(categories)`);
         const now = Date.now();
-        
+
         if (!catInfo.find(col => col.name === 'createdAt')) {
             await db.execAsync(`ALTER TABLE categories ADD COLUMN createdAt INTEGER DEFAULT ${now}`);
         }

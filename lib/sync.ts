@@ -180,8 +180,7 @@ export async function loadDataIntoStore() {
     const transactions = await db.getAllAsync(
         `SELECT * FROM transactions WHERE isDeleted = 0 ORDER BY transactionDate DESC`
     );
-    console.log("Categories:", categories);
-    console.log("Transactions:", transactions);
+
     store.setCategories(categories as any[]);
     store.setTransactions(transactions as any[]);
 
