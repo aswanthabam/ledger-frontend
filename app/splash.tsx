@@ -9,6 +9,7 @@ import { bootApp } from '../lib/boot';
 export default function SplashScreen() {
     const router = useRouter();
     const setUser = useAppStore((state) => state.setUser);
+    const isAuthenticating = useAppStore((state) => state.isAuthenticating);
     const [status, setStatus] = useState('Checking credentials...');
 
     useEffect(() => {
@@ -42,7 +43,7 @@ export default function SplashScreen() {
         }
 
         boot();
-    }, [router]);
+    }, [router, isAuthenticating]);
 
     return (
         <View className="flex-1 items-center justify-center bg-white dark:bg-gray-950">

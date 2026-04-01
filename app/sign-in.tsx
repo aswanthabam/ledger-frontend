@@ -21,7 +21,9 @@ export default function SignInScreen() {
     const setAuthenticating = useAppStore((state) => state.setAuthenticating);
 
 
-    const redirectUri = AuthSession.makeRedirectUri();
+    const redirectUri = AuthSession.makeRedirectUri({
+        scheme: 'com.ledger.app',
+    });
 
     const [request, response, promptAsync] = Google.useAuthRequest({
         webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
@@ -111,16 +113,10 @@ export default function SignInScreen() {
                     console.warn('Sync on boot failed:', syncError.message);
                 }
 
-                // Check for categories
-                const categories = useAppStore.getState().categories;
+                // Finalize by resetting the stack to the root index.
+                // This will trigger the splash screen boot sequence and ensure a clean navigation history.
                 setAuthenticating(false);
-                if (categories.length === 0) {
-                    console.log("No categories found, redirecting to onboarding");
-                    router.replace('/onboarding');
-                } else {
-                    console.log("Categories found, redirecting to app dashboard");
-                    router.replace('/(app)');
-                }
+                router.replace('/');
             }
         } catch (e: any) {
             console.error("Verification failed", e);
@@ -169,7 +165,7 @@ export default function SignInScreen() {
                         onPress={() => {
                             setLoading(true);
                             setAuthenticating(true);
-                            promptAsync();
+                            promptAsync({ createTask: false });
                         }}
                         className="flex-row items-center justify-center rounded-full border border-gray-200 bg-white py-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
                     >
