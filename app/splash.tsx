@@ -18,7 +18,12 @@ export default function SplashScreen() {
                 await bootApp();
 
                 const token = await SecureStore.getItemAsync('authToken');
+                const isAuthenticating = useAppStore.getState().isAuthenticating;
                 if (!token) {
+                    if (isAuthenticating) {
+                        setStatus('Finalizing sign in...');
+                        return;
+                    }
                     router.replace('/sign-in');
                     return;
                 }

@@ -22,6 +22,7 @@
     },
     "android": {
       "package": "com.ledger.app",
+      "launchMode": "singleTask",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/ic_launcher_foreground.png",

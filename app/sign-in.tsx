@@ -10,20 +10,18 @@ import { verifyGoogleToken } from '../lib/api';
 import { useAppStore } from '../stores/useAppStore';
 import { runSync } from '../lib/sync';
 
-// Ensure WebBrowser completes its authentication session
-WebBrowser.maybeCompleteAuthSession();
+// Ensure WebBrowser completes its authentication session for web
+if (Platform.OS === 'web') {
+    WebBrowser.maybeCompleteAuthSession();
+}
 
 export default function SignInScreen() {
     const router = useRouter();
     const setUser = useAppStore((state) => state.setUser);
+    const setAuthenticating = useAppStore((state) => state.setAuthenticating);
 
 
-    const redirectUri = AuthSession.makeRedirectUri({
-        scheme:
-            Platform.OS === 'android'
-                ? `com.googleusercontent.apps.${process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID?.split('.')[0]}`
-                : 'com.ledger.app',
-    });
+    const redirectUri = AuthSession.makeRedirectUri();
 
     const [request, response, promptAsync] = Google.useAuthRequest({
         webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
@@ -65,8 +63,10 @@ export default function SignInScreen() {
         } else if (response.type === 'error') {
             setError('Authentication failed. Please try again.');
             setLoading(false);
+            setAuthenticating(false);
         } else if (response.type === 'cancel' || response.type === 'dismiss') {
             setLoading(false);
+            setAuthenticating(false);
         }
     }, [response]);
 
@@ -103,6 +103,7 @@ export default function SignInScreen() {
                     if (syncError.message === 'UNAUTHORIZED') {
                         // Token expired
                         await SecureStore.deleteItemAsync('authToken');
+                        setAuthenticating(false);
                         router.replace('/sign-in');
                         return;
                     }
@@ -112,6 +113,7 @@ export default function SignInScreen() {
 
                 // Check for categories
                 const categories = useAppStore.getState().categories;
+                setAuthenticating(false);
                 if (categories.length === 0) {
                     console.log("No categories found, redirecting to onboarding");
                     router.replace('/onboarding');
@@ -124,6 +126,7 @@ export default function SignInScreen() {
             console.error("Verification failed", e);
             setError(e.message || 'Failed to verify with server. Please try again.');
             setLoading(false);
+            setAuthenticating(false);
         }
     }
 
@@ -165,6 +168,7 @@ export default function SignInScreen() {
                         disabled={!request}
                         onPress={() => {
                             setLoading(true);
+                            setAuthenticating(true);
                             promptAsync();
                         }}
                         className="flex-row items-center justify-center rounded-full border border-gray-200 bg-white py-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"

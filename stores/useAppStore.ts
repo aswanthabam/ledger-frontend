@@ -45,6 +45,10 @@ interface AppState {
     syncing: boolean;
     setSyncing: (syncing: boolean) => void;
 
+    // Auth state transition
+    isAuthenticating: boolean;
+    setAuthenticating: (isAuthenticating: boolean) => void;
+
     // Date filter
     currentMonth: Date;
     setCurrentMonth: (date: Date) => void;
@@ -81,6 +85,10 @@ export const useAppStore = create<AppState>((set) => ({
     // Sync
     syncing: false,
     setSyncing: (syncing) => set({ syncing }),
+
+    // Auth state transition
+    isAuthenticating: false,
+    setAuthenticating: (isAuthenticating) => set({ isAuthenticating }),
 
     // Date filter
     currentMonth: new Date(),
