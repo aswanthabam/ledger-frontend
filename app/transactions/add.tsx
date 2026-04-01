@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, ToastAndroid, BackHandler } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { useAppStore, Category, Transaction } from '../../stores/useAppStore';
 import { requestWidgetUpdate } from 'react-native-android-widget';
@@ -64,6 +64,33 @@ export default function AddTransactionScreen() {
             setPickedCategory(null);
         }
     }, [pickedCategoryUuid]);
+
+    // Handle Hardware Back Button on Android for Widget Redirect
+    useFocusEffect(
+        useCallback(() => {
+            if (fromWidget !== 'true' || Platform.OS !== 'android') return;
+
+            const backAction = () => {
+                router.replace('/(app)');
+                return true;
+            };
+
+            const backHandler = BackHandler.addEventListener(
+                'hardwareBackPress',
+                backAction,
+            );
+
+            return () => backHandler.remove();
+        }, [fromWidget])
+    );
+
+    const handleBack = () => {
+        if (fromWidget === 'true') {
+            router.replace('/(app)');
+        } else {
+            router.back();
+        }
+    };
 
     async function handleSubmit() {
         if (!amount || !selectedCategoryUuid) {
@@ -180,19 +207,19 @@ export default function AddTransactionScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             className="flex-1 bg-white dark:bg-[#030712]"
         >
-            <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 100 }}>
+            {/* Header */}
+            <View
+                className="flex-row items-center justify-between px-6 pb-4"
+                style={{ paddingTop: Platform.OS === 'web' ? 24 : 64 }}
+            >
+                <TouchableOpacity onPress={handleBack} className="p-2">
+                    <AntDesign name="arrow-left" size={24} color={isDarkMode ? 'white' : 'black'} />
+                </TouchableOpacity>
+                <Text className="text-xl font-bold text-gray-900 dark:text-gray-100">{editUuid ? 'Edit Transaction' : 'Add Transaction'}</Text>
+                <View className="w-10" />
+            </View>
 
-                {/* Header */}
-                <View 
-                    className="flex-row items-center justify-between"
-                    style={{ marginTop: Platform.OS === 'web' ? 0 : 32 }}
-                >
-                    <TouchableOpacity onPress={() => router.back()} className="p-2">
-                        <AntDesign name="arrow-left" size={24} color={isDarkMode ? 'white' : 'black'} />
-                    </TouchableOpacity>
-                    <Text className="text-xl font-bold text-gray-900 dark:text-gray-100">{editUuid ? 'Edit Transaction' : 'Add Transaction'}</Text>
-                    <View className="w-10" />
-                </View>
+            <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, paddingTop: 8, paddingBottom: 100 }}>
 
                 {/* Amount Input */}
                 <View className="mt-8 items-center">
@@ -335,7 +362,7 @@ export default function AddTransactionScreen() {
                 {/* Date */}
                 <View className="mt-10">
                     <Text className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Date</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => setShowDatePicker(true)}
                         className="mt-4 flex-row items-center justify-between rounded-2xl bg-gray-50 p-4 dark:bg-gray-900/50"
                         activeOpacity={0.7}
